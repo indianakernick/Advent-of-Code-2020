@@ -1,3 +1,4 @@
+use text_io::read;
 use adventofcode2020::*;
 
 fn main() {

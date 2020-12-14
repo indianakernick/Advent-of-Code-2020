@@ -1,3 +1,4 @@
+use text_io::scan;
 use adventofcode2020::*;
 
 enum Command {
@@ -10,12 +11,12 @@ type Memory = std::collections::HashMap::<u64, u64>;
 fn parse_input() -> Vec::<Command> {
     line_iter_from_file("input/day_14.txt")
         .map(|line| {
-            let line_bytes = line.as_bytes();
-            if line_bytes.starts_with(b"mask = ") {
+            let line = line.as_bytes();
+            if line.starts_with(b"mask = ") {
                 let mut ones = 0;
                 let mut zeros = 0;
                 for bit in 0..36 {
-                    match line_bytes[line_bytes.len() - 1 - bit] {
+                    match line[line.len() - 1 - bit] {
                         b'0' => zeros |= 1 << bit,
                         b'1' => ones |= 1 << bit,
                         _ => {}
@@ -25,9 +26,7 @@ fn parse_input() -> Vec::<Command> {
             } else {
                 let address: u64;
                 let value: u64;
-                // line.bytes() works but line.as_bytes().iter() doesn't.
-                // Rust is hard
-                scan!(line.bytes() => "mem[{}] = {}", address, value);
+                scan!(line.iter().map(|c| *c) => "mem[{}] = {}", address, value);
                 Command::SetMemory { address, value }
             }
         })

@@ -1,9 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
-pub use text_io::read;
-pub use text_io::scan;
-
 pub fn open_file<P>(path: P) -> BufReader<File>
     where P: AsRef<std::path::Path>
 {
