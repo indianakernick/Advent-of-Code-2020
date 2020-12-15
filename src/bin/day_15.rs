@@ -9,8 +9,7 @@ fn find_spoken_number(start: &[u32], last_turn: u32) -> u32 {
         let pair = &numbers[last as usize];
         last = if pair.0 == 0 { 0 } else { pair.1 - pair.0 };
         let pair = &mut numbers[last as usize];
-        pair.0 = pair.1;
-        pair.1 = t;
+        *pair = (pair.1, t);
     }
 
     last
