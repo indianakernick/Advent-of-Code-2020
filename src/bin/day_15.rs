@@ -1,22 +1,16 @@
 fn find_spoken_number(start: &[u32], last_turn: u32) -> u32 {
-    let mut numbers = Vec::<(u32, u32)>::new();
-    numbers.resize(last_turn as usize, (u32::MAX, u32::MAX));
+    let mut numbers = vec![(0, 0); last_turn as usize];
     for i in 0..start.len() {
-        let turn = i as u32;
-        numbers[start[i] as usize] = (turn, turn);
+        numbers[start[i] as usize] = (0, i as u32 + 1);
     }
     let mut last = start[start.len() - 1];
 
-    for t in (start.len() as u32)..last_turn {
+    for t in (start.len() as u32 + 1)..(last_turn + 1) {
+        let pair = &numbers[last as usize];
+        last = if pair.0 == 0 { 0 } else { pair.1 - pair.0 };
         let pair = &mut numbers[last as usize];
-        last = pair.1 - pair.0;
-        let pair = &mut numbers[last as usize];
-        if pair.0 == u32::MAX && pair.1 == u32::MAX {
-            *pair = (t, t);
-        } else {
-            pair.0 = pair.1;
-            pair.1 = t;
-        }
+        pair.0 = pair.1;
+        pair.1 = t;
     }
 
     last
