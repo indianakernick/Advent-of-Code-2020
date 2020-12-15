@@ -1,19 +1,22 @@
-use std::collections::hash_map::HashMap;
-
 fn find_spoken_number(start: &[u32], last_turn: u32) -> u32 {
-    let mut numbers = HashMap::<u32, (u32, u32)>::new();
+    let mut numbers = Vec::<(u32, u32)>::new();
+    numbers.resize(last_turn as usize, (u32::MAX, u32::MAX));
     for i in 0..start.len() {
         let turn = i as u32;
-        numbers.insert(start[i], (turn, turn));
+        numbers[start[i] as usize] = (turn, turn);
     }
     let mut last = start[start.len() - 1];
 
     for t in (start.len() as u32)..last_turn {
-        let pair = numbers[&last];
+        let pair = &mut numbers[last as usize];
         last = pair.1 - pair.0;
-        let pair = numbers.entry(last).or_insert((t, t));
-        pair.0 = pair.1;
-        pair.1 = t;
+        let pair = &mut numbers[last as usize];
+        if pair.0 == u32::MAX && pair.1 == u32::MAX {
+            *pair = (t, t);
+        } else {
+            pair.0 = pair.1;
+            pair.1 = t;
+        }
     }
 
     last
