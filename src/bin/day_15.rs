@@ -1,4 +1,4 @@
-use std::collections::hash_map::{HashMap, Entry};
+use std::collections::hash_map::HashMap;
 
 fn find_spoken_number(start: &[u32], last_turn: u32) -> u32 {
     let mut numbers = HashMap::<u32, (u32, u32)>::new();
