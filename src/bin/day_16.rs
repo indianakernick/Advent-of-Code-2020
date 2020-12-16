@@ -1,29 +1,20 @@
 use text_io::scan;
 use adventofcode2020::*;
 
-type Range = std::ops::RangeInclusive::<i32>;
-
 struct Field {
     name: String,
-    first: Range,
-    second: Range,
+    a_min: i32,
+    a_max: i32,
+    b_min: i32,
+    b_max: i32,
     candidate_positions: Vec::<usize>,
-    position: usize
+    position: usize,
 }
 
 impl Field {
-    fn new(name: String, first: Range, second: Range) -> Field {
-        Field {
-            name,
-            first,
-            second,
-            candidate_positions: Vec::new(),
-            position: usize::MAX,
-        }
-    }
-
     fn contains(&self, value: i32) -> bool {
-        self.first.contains(&value) || self.second.contains(&value)
+        (self.a_min <= value && value <= self.a_max) ||
+        (self.b_min <= value && value <= self.b_max)
     }
 
     fn append_pos(&mut self, pos: usize) {
@@ -39,12 +30,16 @@ impl Field {
 
 fn parse_field(line: String) -> Field {
     let name: String;
-    let min_a: i32;
-    let max_a: i32;
-    let min_b: i32;
-    let max_b: i32;
-    scan!(line.bytes() => "{}: {}-{} or {}-{}", name, min_a, max_a, min_b, max_b);
-    Field::new(name, min_a..=max_a, min_b..=max_b)
+    let a_min: i32;
+    let a_max: i32;
+    let b_min: i32;
+    let b_max: i32;
+    scan!(line.bytes() => "{}: {}-{} or {}-{}", name, a_min, a_max, b_min, b_max);
+    Field {
+        name, a_min, a_max, b_min, b_max,
+        candidate_positions: Vec::new(),
+        position: usize::MAX,
+    }
 }
 
 fn parse_ticket(line: String) -> Vec<i32> {
@@ -99,15 +94,14 @@ fn main() {
     }
 
     for _ in 0..fields.len() {
-        let mut found_pos = 0;
-        for field in fields.iter_mut() {
-            if field.candidate_positions.len() == 1 {
-                field.position = field.candidate_positions[0];
-                found_pos = field.position;
+        for f in 0..fields.len() {
+            if fields[f].candidate_positions.len() == 1 {
+                let position = fields[f].candidate_positions.remove(0);
+                fields[f].position = position;
+                fields.iter_mut().for_each(|field| field.remove_pos(position));
                 break;
             }
         }
-        fields.iter_mut().for_each(|field| field.remove_pos(found_pos));
     }
 
     let mut product = 1u64;
