@@ -1,27 +1,63 @@
 use adventofcode2020::*;
 
+type Range = std::ops::RangeInclusive::<i32>;
+
+struct Field {
+    name: &'static str,
+    first: Range,
+    second: Range,
+    candidate_orders: Vec::<usize>,
+    final_order: usize
+}
+
+impl Field {
+    fn new(name: &'static str, first: Range, second: Range) -> Field {
+        Field {
+            name,
+            first,
+            second,
+            candidate_orders: Vec::new(),
+            final_order: usize::MAX,
+        }
+    }
+
+    fn contains(&self, value: i32) -> bool {
+        self.first.contains(&value) || self.second.contains(&value)
+    }
+
+    fn append_order(&mut self, order: usize) {
+        self.candidate_orders.push(order);
+    }
+
+    fn remove_order(&mut self, order: usize) {
+        if let Ok(index) = self.candidate_orders.binary_search(&order) {
+            self.candidate_orders.remove(index);
+        }
+    }
+}
+
 fn main() {
-    let mut fields = std::collections::HashMap::new();
-    fields.insert("departure location", ((28, 787), (804, 964)));
-    fields.insert("departure station", ((41, 578), (594, 962)));
-    fields.insert("departure platform", ((50, 718), (733, 949)));
-    fields.insert("departure track", ((27, 846), (862, 949)));
-    fields.insert("departure date", ((50, 241), (249, 957)));
-    fields.insert("departure time", ((44, 81), (104, 972)));
-    fields.insert("arrival location", ((45, 292), (299, 954)));
-    fields.insert("arrival station", ((46, 650), (657, 974)));
-    fields.insert("arrival platform", ((42, 396), (405, 953)));
-    fields.insert("arrival track", ((42, 871), (886, 973)));
-    fields.insert("class", ((31, 808), (829, 964)));
-    fields.insert("duration", ((39, 909), (935, 969)));
-    fields.insert("price", ((49, 350), (364, 970)));
-    fields.insert("route", ((44, 251), (264, 959)));
-    fields.insert("row", ((50, 539), (556, 952)));
-    fields.insert("seat", ((45, 624), (630, 951)));
-    fields.insert("train", ((28, 283), (290, 960)));
-    fields.insert("type", ((44, 334), (340, 951)));
-    fields.insert("wagon", ((43, 699), (716, 961)));
-    fields.insert("zone", ((42, 668), (688, 958)));
+    let mut fields = Vec::new();
+    fields.push(Field::new("departure location", 28..=787, 804..=964));
+    fields.push(Field::new("departure station", 41..=578, 594..=962));
+    fields.push(Field::new("departure platform", 50..=718, 733..=949));
+    fields.push(Field::new("departure track", 27..=846, 862..=949));
+    fields.push(Field::new("departure date", 50..=241, 249..=957));
+    fields.push(Field::new("departure time", 44..=81, 104..=972));
+    fields.push(Field::new("arrival location", 45..=292, 299..=954));
+    fields.push(Field::new("arrival station", 46..=650, 657..=974));
+    fields.push(Field::new("arrival platform", 42..=396, 405..=953));
+    fields.push(Field::new("arrival track", 42..=871, 886..=973));
+    fields.push(Field::new("class", 31..=808, 829..=964));
+    fields.push(Field::new("duration", 39..=909, 935..=969));
+    fields.push(Field::new("price", 49..=350, 364..=970));
+    fields.push(Field::new("route", 44..=251, 264..=959));
+    fields.push(Field::new("row", 50..=539, 556..=952));
+    fields.push(Field::new("seat", 45..=624, 630..=951));
+    fields.push(Field::new("train", 28..=283, 290..=960));
+    fields.push(Field::new("type", 44..=334, 340..=951));
+    fields.push(Field::new("wagon", 43..=699, 716..=961));
+    fields.push(Field::new("zone", 42..=668, 688..=958));
 
     let your_ticket = [131,67,137,61,149,107,109,79,71,127,173,157,167,139,151,163,59,53,113,73];
 
@@ -277,18 +313,7 @@ fn main() {
     for ticket in tickets.iter() {
         let mut valid = true;
         for ticket_field in ticket.iter() {
-            let mut valid_field = false;
-            for (_key, ((min0, max0), (min1, max1))) in fields.iter() {
-                if min0 <= ticket_field && ticket_field <= max0 {
-                    valid_field = true;
-                    break;
-                }
-                if min1 <= ticket_field && ticket_field <= max1 {
-                    valid_field = true;
-                    break;
-                }
-            }
-            if !valid_field {
+            if !fields.iter().any(|field| field.contains(*ticket_field)) {
                 error_rate += ticket_field;
                 valid = false;
             }
@@ -298,105 +323,32 @@ fn main() {
         }
     }
     println!("Part one: {}", error_rate);
-    println!("Part two: {}", your_ticket[14] as u64 * your_ticket[1] as u64 * your_ticket[3] as u64 * your_ticket[0] as u64 * your_ticket[7] as u64 * your_ticket[8] as u64);
-return;
 
-    for (key, ((min0, max0), (min1, max1))) in fields.iter() {
+    for field in fields.iter_mut() {
         for position in 0..your_ticket.len() {
-            if position == 6 {
-                // arrival station
-                continue;
-            }
-
-            if position == 10 {
-                // train
-                continue;
-            }
-
-            if position == 4 {
-                // seat
-                continue;
-            }
-
-            if position == 9 {
-                // row
-                continue;
-            }
-
-            if position == 17 {
-                // type
-                continue;
-            }
-
-            if position == 16 {
-                // arrival platform
-                continue;
-            }
-
-            if position == 5 {
-                // wagon
-                continue;
-            }
-
-            if position == 2 {
-                // zone
-                continue;
-            }
-
-            if position == 18 {
-                // arrival track
-                continue;
-            }
-
-            if position == 14 {
-                // departure date
-                continue;
-            }
-
-            if position == 1 {
-                // departure location
-                continue;
-            }
-
-            if position == 3 {
-                // departure station
-                continue;
-            }
-
-            if position == 0 {
-                // departure time
-                continue;
-            }
-
-            if position == 7 {
-                // departure track
-                continue;
-            }
-
-            if position == 8 {
-                // departure platform
-                continue;
-            }
-
-            if position == 13 {
-                // duration
-                continue;
-            }
-
-            if position == 12 {
-                // arrival location
-                continue;
-            }
-
-            let all_valid = valid_tickets
-                .iter()
-                .all(|ticket| {
-                    let f = &ticket[position];
-                    (min0 <= f && f <= max0) || (min1 <= f && f <= max1)
-                });
-            if all_valid {
-                println!("\"{}\" could be {}", key, position);
+            if valid_tickets.iter().all(|ticket| field.contains(ticket[position])) {
+                field.append_order(position);
             }
         }
     }
+
+    for _ in 0..fields.len() {
+        let mut found_order = 0;
+        for field in fields.iter_mut() {
+            if field.candidate_orders.len() == 1 {
+                field.final_order = field.candidate_orders[0];
+                found_order = field.final_order;
+                break;
+            }
+        }
+        fields.iter_mut().for_each(|field| field.remove_order(found_order));
+    }
+
+    let mut product = 1u64;
+    for field in fields.iter() {
+        if field.name.starts_with("departure") {
+            product *= your_ticket[field.final_order] as u64;
+        }
+    }
+    println!("Part two: {}", product);
 }
