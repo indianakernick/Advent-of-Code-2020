@@ -7,8 +7,8 @@ struct Field {
     name: String,
     first: Range,
     second: Range,
-    candidate_orders: Vec::<usize>,
-    final_order: usize
+    candidate_positions: Vec::<usize>,
+    position: usize
 }
 
 impl Field {
@@ -17,8 +17,8 @@ impl Field {
             name,
             first,
             second,
-            candidate_orders: Vec::new(),
-            final_order: usize::MAX,
+            candidate_positions: Vec::new(),
+            position: usize::MAX,
         }
     }
 
@@ -26,13 +26,13 @@ impl Field {
         self.first.contains(&value) || self.second.contains(&value)
     }
 
-    fn append_order(&mut self, order: usize) {
-        self.candidate_orders.push(order);
+    fn append_pos(&mut self, pos: usize) {
+        self.candidate_positions.push(pos);
     }
 
-    fn remove_order(&mut self, order: usize) {
-        if let Ok(index) = self.candidate_orders.binary_search(&order) {
-            self.candidate_orders.remove(index);
+    fn remove_pos(&mut self, pos: usize) {
+        if let Ok(index) = self.candidate_positions.binary_search(&pos) {
+            self.candidate_positions.remove(index);
         }
     }
 }
@@ -91,30 +91,31 @@ fn main() {
     println!("Part one: {}", error_rate);
 
     for field in fields.iter_mut() {
-        for position in 0..tickets[0].len() {
-            if tickets.iter().all(|ticket| field.contains(ticket[position])) {
-                field.append_order(position);
+        for pos in 0..tickets[0].len() {
+            if tickets.iter().all(|ticket| field.contains(ticket[pos])) {
+                field.append_pos(pos);
             }
         }
     }
 
     for _ in 0..fields.len() {
-        let mut found_order = 0;
+        let mut found_pos = 0;
         for field in fields.iter_mut() {
-            if field.candidate_orders.len() == 1 {
-                field.final_order = field.candidate_orders[0];
-                found_order = field.final_order;
+            if field.candidate_positions.len() == 1 {
+                field.position = field.candidate_positions[0];
+                found_pos = field.position;
                 break;
             }
         }
-        fields.iter_mut().for_each(|field| field.remove_order(found_order));
+        fields.iter_mut().for_each(|field| field.remove_pos(found_pos));
     }
 
     let mut product = 1u64;
     for field in fields.iter() {
         if field.name.starts_with("departure") {
-            product *= tickets[0][field.final_order] as u64;
+            product *= tickets[0][field.position] as u64;
         }
     }
+
     println!("Part two: {}", product);
 }
