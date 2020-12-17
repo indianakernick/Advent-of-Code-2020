@@ -62,6 +62,12 @@ fn parse_input() -> Cells {
     cells
 }
 
+// Is it possible to merge these the 3D and 4D functions into one function
+// without sacrificing performance (using generics)?
+
+// Rust doesn't have variadic generics or integer generic parameters.
+// This makes me think that it's not possible in Rust. I miss C++ templates...
+
 fn count_neighbors_3d(cells: &Cells, pos: Pos) -> u32 {
     let mut count = 0;
     for x in -1..=1 {
