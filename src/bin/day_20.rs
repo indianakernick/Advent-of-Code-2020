@@ -372,39 +372,6 @@ fn construct_image(images: &Vec<Image>, count: usize) -> ImageData {
     full_image
 }
 
-fn print_image(image: &ImageData, size: usize) {
-    assert_eq!(image.len(), size * size);
-    for y in 0..size {
-        for x in 0..size {
-            if image[y * size + x] {
-                print!("#");
-            } else {
-                print!(".");
-            }
-        }
-        println!();
-    }
-}
-
-fn print_ids(images: &Vec<Image>, count: usize) {
-    assert_eq!(images.len(), count * count);
-    let mut ids = vec![0; count * count];
-    for image in images {
-        assert!((image.position.0 as usize) < count && (image.position.1 as usize) < count);
-        ids[image.position.1 as usize * count + image.position.0 as usize] = image.id;
-    }
-    for y in 0..count {
-        for x in 0..count {
-            if ids[y * count + x] == 0 {
-                print!("     ");
-            } else {
-                print!("{} ", ids[y * count + x]);
-            }
-        }
-        println!();
-    }
-}
-
 fn count_set_pixels(image: &ImageData) -> usize {
     image.iter().filter(|p| **p).count()
 }
@@ -497,10 +464,10 @@ fn main() {
     align_images(&mut images, &mut processing, 0, (0, 0));
     shift_positions(&mut images);
 
-    let count = 12usize;
-    let image_size = count * (IMAGE_SIZE - 2);
+    let tile_count = 12usize;
+    let image_size = tile_count * (IMAGE_SIZE - 2);
 
-    let mut full_image = construct_image(&mut images, count);
+    let mut full_image = construct_image(&mut images, tile_count);
     let set_pixels = count_set_pixels(&full_image);
     let monster_count = transform_count_sea_monsters(&mut full_image, image_size);
     let roughness = set_pixels - monster_count * MONSTER_PIXELS;
