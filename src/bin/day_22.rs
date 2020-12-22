@@ -1,4 +1,23 @@
+use adventofcode2020::*;
 use std::collections::VecDeque;
+
+fn parse_input() -> (VecDeque<u8>, VecDeque<u8>) {
+    let mut line_iter = line_iter_from_file("input/day_22.txt");
+    line_iter.next().unwrap(); // player_1:
+
+    let player_1 = (&mut line_iter)
+        .take_while(|line| !line.is_empty())
+        .map(|line| line.parse().unwrap())
+        .collect();
+
+    line_iter.next().unwrap(); // player_2:
+
+    let player_2 = line_iter
+        .map(|line| line.parse().unwrap())
+        .collect();
+
+    (player_1, player_2)
+}
 
 fn calculate_score(deck: &VecDeque<u8>) -> usize {
     let mut multiplier = deck.len();
@@ -33,17 +52,22 @@ fn combat(mut player_1: VecDeque<u8>, mut player_2: VecDeque<u8>) -> usize {
     }
 }
 
-fn recursive_combat_impl(level: usize, mut player_1: VecDeque<u8>, mut player_2: VecDeque<u8>) -> usize {
+#[derive(PartialEq)]
+enum Winner {
+    None,
+    Player1,
+    Player2
+}
+
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+fn recursive_combat_impl(level: usize, player_1: &mut VecDeque<u8>, player_2: &mut VecDeque<u8>) -> Winner {
     let mut rounds = Vec::<(VecDeque<u8>, VecDeque<u8>)>::new();
 
     loop {
         for round in rounds.iter() {
-            if round.0 == player_1 && round.1 == player_2 {
-                if level == 0 {
-                    return calculate_score(&player_1);
-                } else {
-                    return 1;
-                }
+            if round.0 == *player_1 && round.1 == *player_2 {
+                return Winner::Player1;
             }
         }
 
@@ -52,19 +76,19 @@ fn recursive_combat_impl(level: usize, mut player_1: VecDeque<u8>, mut player_2:
         let top_1 = player_1.pop_front().unwrap();
         let top_2 = player_2.pop_front().unwrap();
 
-        let mut player = 0;
+        let mut player = Winner::None;
         if player_1.len() >= top_1 as usize && player_2.len() >= top_2 as usize {
             player = recursive_combat_impl(
                 level + 1,
-                player_1.iter().take(top_1 as usize).map(u8::clone).collect(),
-                player_2.iter().take(top_2 as usize).map(u8::clone).collect()
+                &mut player_1.iter().take(top_1 as usize).map(u8::clone).collect(),
+                &mut player_2.iter().take(top_2 as usize).map(u8::clone).collect()
             );
         }
 
-        if player == 1 || top_1 > top_2 {
+        if player == Winner::Player1 || top_1 > top_2 {
             player_1.push_back(top_1);
             player_1.push_back(top_2);
-        } else if player == 2 || top_2 > top_1 {
+        } else if player == Winner::Player2 || top_2 > top_1 {
             player_2.push_back(top_2);
             player_2.push_back(top_1);
         } else {
@@ -72,33 +96,23 @@ fn recursive_combat_impl(level: usize, mut player_1: VecDeque<u8>, mut player_2:
         }
 
         if player_1.is_empty() {
-            if level == 0 {
-                return calculate_score(&player_2)
-            } else {
-                return 2;
-            }
+            return Winner::Player2;
         } else if player_2.is_empty() {
-            if level == 0 {
-                return calculate_score(&player_1);
-            } else {
-                return 1;
-            }
+            return Winner::Player1;
         }
     }
 }
 
-fn recursive_combat(player_1: VecDeque<u8>, player_2: VecDeque<u8>) -> usize {
-    recursive_combat_impl(0, player_1, player_2)
+fn recursive_combat(mut player_1: VecDeque<u8>, mut player_2: VecDeque<u8>) -> usize {
+    match recursive_combat_impl(0, &mut player_1, &mut player_2) {
+        Winner::Player1 => calculate_score(&player_1),
+        Winner::Player2 => calculate_score(&player_2),
+        Winner::None => panic!(),
+    }
 }
 
 fn main() {
-    let player_1 = VecDeque::from(vec![
-        14, 6, 21, 10, 1, 33, 7, 13, 25, 8, 17, 11, 28, 27, 50, 2, 35, 49, 19, 46, 3, 38, 23, 5, 43,
-    ]);
-    let player_2 = VecDeque::from(vec![
-        18, 9, 12, 39, 48, 24, 32, 45, 47, 41, 40, 15, 22, 36, 30, 26, 42, 34, 20, 16, 4, 31, 37, 44, 29,
-    ]);
-
+    let (player_1, player_2) = parse_input();
     println!("Part one {}", combat(player_1.clone(), player_2.clone()));
     println!("Part two {}", recursive_combat(player_1, player_2));
 }
