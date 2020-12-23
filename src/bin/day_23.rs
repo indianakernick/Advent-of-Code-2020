@@ -1,49 +1,56 @@
 use std::collections::HashMap;
 
-#[derive(Debug)]
 struct Node {
     value: i32,
     prev: usize,
     next: usize,
 }
 
-impl Node {
-    fn new(value: i32, prev: usize, next: usize) -> Self {
-        Node { value, prev, next }
-    }
-}
-
-fn initialize() -> (Vec<Node>, HashMap<i32, usize>, i32) {
-    let mut cups = vec![1, 6, 7, 2, 4, 8, 3, 5, 9];
-    for i in 10..=1000000 {
-        cups.push(i);
-    }
+fn initialize(part_two: bool) -> (Vec<Node>, HashMap<i32, usize>, i32) {
+    let cups = vec![1, 6, 7, 2, 4, 8, 3, 5, 9];
+    let length = if part_two { 1_000_000 } else { cups.len() };
     let mut cup_nodes = Vec::new();
     let mut idx_map = HashMap::new();
+
     for i in 0..cups.len() {
-        let prev = (i + cups.len() - 1) % cups.len();
-        let next = (i + 1) % cups.len();
-        cup_nodes.push(Node::new(cups[i], prev, next));
+        let prev = (i + length - 1) % length;
+        let next = (i + 1) % length;
+        cup_nodes.push(Node { value: cups[i], prev, next });
         idx_map.insert(cups[i], i);
     }
-    (cup_nodes, idx_map, 1000000)
+
+    if part_two {
+        for i in 9..length {
+            let prev = i - 1;
+            let next = (i + 1) % length;
+            cup_nodes.push(Node { value: (i + 1) as i32, prev, next });
+        }
+    }
+
+    (cup_nodes, idx_map, length as i32)
 }
 
-fn main() {
-    let (mut cup_nodes, idx_map, max_value) = initialize();
+fn simulate(part_two: bool) {
+    let (mut cups, idx_map, max_value) = initialize(part_two);
     let mut current_idx = 0;
 
-    for _ in 0..10000000 {
-        let taken_0 = cup_nodes[current_idx].next;
-        let taken_1 = cup_nodes[taken_0].next;
-        let taken_2 = cup_nodes[taken_1].next;
-        let taken_end = cup_nodes[taken_2].next;
-        cup_nodes[current_idx].next = taken_end;
-        cup_nodes[taken_end].prev = current_idx;
+    let moves = if part_two { 10_000_000 } else { 100 };
 
-        let taken_cups = [cup_nodes[taken_0].value, cup_nodes[taken_1].value, cup_nodes[taken_2].value];
+    for _ in 0..moves {
+        let taken_0 = cups[current_idx].next;
+        let taken_1 = cups[taken_0].next;
+        let taken_2 = cups[taken_1].next;
+        let taken_end = cups[taken_2].next;
+        cups[current_idx].next = taken_end;
+        cups[taken_end].prev = current_idx;
 
-        let mut destination = cup_nodes[current_idx].value - 1;
+        let taken_cups = [
+            cups[taken_0].value,
+            cups[taken_1].value,
+            cups[taken_2].value
+        ];
+
+        let mut destination = cups[current_idx].value - 1;
         while destination < 1 || taken_cups.contains(&destination) {
             destination -= 1;
             if destination < 1 {
@@ -51,24 +58,37 @@ fn main() {
             }
         }
 
-        let destination_idx = idx_map[&destination];
-        let destination_end = cup_nodes[destination_idx].next;
-        cup_nodes[destination_idx].next = taken_0;
-        cup_nodes[taken_0].prev = destination_idx;
-        cup_nodes[taken_2].next = destination_end;
-        cup_nodes[destination_end].prev = taken_2;
+        let destination_idx = if destination < 10 {
+            idx_map[&destination]
+        } else {
+            destination as usize - 1
+        };
+        let destination_end = cups[destination_idx].next;
+        cups[destination_idx].next = taken_0;
+        cups[taken_0].prev = destination_idx;
+        cups[taken_2].next = destination_end;
+        cups[destination_end].prev = taken_2;
 
-        current_idx = cup_nodes[current_idx].next;
+        current_idx = cups[current_idx].next;
     }
 
+    let mut idx = cups[idx_map[&1]].next;
+    if part_two {
+        let first = cups[idx].value as u64;
+        idx = cups[idx].next;
+        let second = cups[idx].value as u64;
+        println!("Part two: {}", first * second);
+    } else {
+        print!("Part one: ");
+        for _ in 0..8 {
+            print!("{}", cups[idx].value);
+            idx = cups[idx].next;
+        }
+        println!();
+    }
+}
 
-    let mut idx = cup_nodes[idx_map[&1]].next;
-    let first = cup_nodes[idx].value as u64;
-    idx = cup_nodes[idx].next;
-    let second = cup_nodes[idx].value as u64;
-    println!("{}", first * second);
-    /*for _ in 0..8 {
-        print!("{}", cup_nodes[idx].value);
-        idx = cup_nodes[idx].next;
-    }*/
+fn main() {
+    simulate(false);
+    simulate(true);
 }
