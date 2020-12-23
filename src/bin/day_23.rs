@@ -1,52 +1,74 @@
-fn main() {
+use std::collections::HashMap;
+
+#[derive(Debug)]
+struct Node {
+    value: i32,
+    prev: usize,
+    next: usize,
+}
+
+impl Node {
+    fn new(value: i32, prev: usize, next: usize) -> Self {
+        Node { value, prev, next }
+    }
+}
+
+fn initialize() -> (Vec<Node>, HashMap<i32, usize>, i32) {
     let mut cups = vec![1, 6, 7, 2, 4, 8, 3, 5, 9];
-    //let mut cups = vec![3, 8, 9, 1, 2, 5, 4, 6, 7];
-    let mut current = 0;
-    let mut taken_cups = [0, 0, 0];
+    for i in 10..=1000000 {
+        cups.push(i);
+    }
+    let mut cup_nodes = Vec::new();
+    let mut idx_map = HashMap::new();
+    for i in 0..cups.len() {
+        let prev = (i + cups.len() - 1) % cups.len();
+        let next = (i + 1) % cups.len();
+        cup_nodes.push(Node::new(cups[i], prev, next));
+        idx_map.insert(cups[i], i);
+    }
+    (cup_nodes, idx_map, 1000000)
+}
 
-    for _ in 0..100 {
-        let mut destination = cups[current] - 1;
-        let mut rotate_by = 3;
+fn main() {
+    let (mut cup_nodes, idx_map, max_value) = initialize();
+    let mut current_idx = 0;
 
-        for i in 0..3 {
-            let mut taken = current + 1;
-            if taken >= cups.len() {
-                taken = 0;
-                rotate_by -= 1;
-            }
-            taken_cups[i] = cups.remove(taken);
-        }
+    for _ in 0..10000000 {
+        let taken_0 = cup_nodes[current_idx].next;
+        let taken_1 = cup_nodes[taken_0].next;
+        let taken_2 = cup_nodes[taken_1].next;
+        let taken_end = cup_nodes[taken_2].next;
+        cup_nodes[current_idx].next = taken_end;
+        cup_nodes[taken_end].prev = current_idx;
 
+        let taken_cups = [cup_nodes[taken_0].value, cup_nodes[taken_1].value, cup_nodes[taken_2].value];
+
+        let mut destination = cup_nodes[current_idx].value - 1;
         while destination < 1 || taken_cups.contains(&destination) {
             destination -= 1;
             if destination < 1 {
-                destination = 9;
+                destination = max_value;
             }
         }
 
-        for i in 0..cups.len() {
-            if cups[i] == destination {
-                for j in 0..3 {
-                    cups.insert(i + j + 1, taken_cups[j]);
-                }
-                if i < current {
-                    current += rotate_by;
-                }
-                break;
-            }
-        }
+        let destination_idx = idx_map[&destination];
+        let destination_end = cup_nodes[destination_idx].next;
+        cup_nodes[destination_idx].next = taken_0;
+        cup_nodes[taken_0].prev = destination_idx;
+        cup_nodes[taken_2].next = destination_end;
+        cup_nodes[destination_end].prev = taken_2;
 
-        current += 1;
-        current %= cups.len();
+        current_idx = cup_nodes[current_idx].next;
     }
 
-    for i in 0..cups.len() {
-        if cups[i] == 1 {
-            for j in 0..(cups.len() - 1) {
-                print!("{}", cups[(i + j + 1) % cups.len()]);
-            }
-            println!();
-            break;
-        }
-    }
+
+    let mut idx = cup_nodes[idx_map[&1]].next;
+    let first = cup_nodes[idx].value as u64;
+    idx = cup_nodes[idx].next;
+    let second = cup_nodes[idx].value as u64;
+    println!("{}", first * second);
+    /*for _ in 0..8 {
+        print!("{}", cup_nodes[idx].value);
+        idx = cup_nodes[idx].next;
+    }*/
 }
