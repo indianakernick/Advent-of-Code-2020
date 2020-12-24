@@ -93,12 +93,13 @@ fn simulate(tiles: &mut HashSet<(i32, i32, i32)>) {
                         (x,     y - 1, z + 1),
                         (x - 1, y,     z + 1),
                     ];
-                    let black_count = neighbors.iter()
+                    let count = neighbors.iter()
                         .filter(|neighbor| tiles.contains(neighbor))
                         .count();
-                    if black_count == 2 || (black_count == 1 && tiles.contains(&(x, y, z))) {
-                        next_tiles.insert((x, y, z));
-                        next_range.set(&(x, y, z));
+                    let tile = (x, y, z);
+                    if count == 2 || (count == 1 && tiles.contains(&tile)) {
+                        next_tiles.insert(tile);
+                        next_range.set(&tile);
                     }
                 }
             }
