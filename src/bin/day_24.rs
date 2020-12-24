@@ -2,22 +2,22 @@ use adventofcode2020::*;
 use std::collections::HashSet;
 
 struct Range {
-    min_x: i32,
-    max_x: i32,
-    min_y: i32,
-    max_y: i32,
-    min_z: i32,
-    max_z: i32,
+    min_x: i16,
+    max_x: i16,
+    min_y: i16,
+    max_y: i16,
+    min_z: i16,
+    max_z: i16,
 }
 
 const EMPTY_RANGE: Range = Range {
-    min_x: i32::MAX, max_x: i32::MIN,
-    min_y: i32::MAX, max_y: i32::MIN,
-    min_z: i32::MAX, max_z: i32::MIN,
+    min_x: i16::MAX, max_x: i16::MIN,
+    min_y: i16::MAX, max_y: i16::MIN,
+    min_z: i16::MAX, max_z: i16::MIN,
 };
 
 impl Range {
-    fn set(&mut self, tile: &(i32, i32, i32)) {
+    fn set(&mut self, tile: &(i16, i16, i16)) {
         self.min_x = self.min_x.min(tile.0);
         self.max_x = self.max_x.max(tile.0);
         self.min_y = self.min_y.min(tile.1);
@@ -27,7 +27,7 @@ impl Range {
     }
 }
 
-fn parse_input() -> HashSet::<(i32, i32, i32)> {
+fn parse_input() -> HashSet::<(i16, i16, i16)> {
     let mut tiles = HashSet::new();
 
     lines_from_file("input/day_24.txt", |line| {
@@ -66,7 +66,7 @@ fn parse_input() -> HashSet::<(i32, i32, i32)> {
     tiles
 }
 
-fn simulate(tiles: &mut HashSet<(i32, i32, i32)>) {
+fn simulate(tiles: &mut HashSet<(i16, i16, i16)>) {
     let mut next_tiles = HashSet::new();
     let mut range = EMPTY_RANGE;
     let mut next_range;
