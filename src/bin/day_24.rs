@@ -1,6 +1,32 @@
 use adventofcode2020::*;
 use std::collections::HashSet;
 
+struct Range {
+    min_x: i32,
+    max_x: i32,
+    min_y: i32,
+    max_y: i32,
+    min_z: i32,
+    max_z: i32,
+}
+
+const EMPTY_RANGE: Range = Range {
+    min_x: i32::MAX, max_x: i32::MIN,
+    min_y: i32::MAX, max_y: i32::MIN,
+    min_z: i32::MAX, max_z: i32::MIN,
+};
+
+impl Range {
+    fn set(&mut self, tile: &(i32, i32, i32)) {
+        self.min_x = self.min_x.min(tile.0);
+        self.max_x = self.max_x.max(tile.0);
+        self.min_y = self.min_y.min(tile.1);
+        self.max_y = self.max_y.max(tile.1);
+        self.min_z = self.min_z.min(tile.2);
+        self.max_z = self.max_z.max(tile.2);
+    }
+}
+
 fn parse_input() -> HashSet::<(i32, i32, i32)> {
     let mut tiles = HashSet::new();
 
@@ -41,29 +67,21 @@ fn parse_input() -> HashSet::<(i32, i32, i32)> {
 }
 
 fn simulate(tiles: &mut HashSet<(i32, i32, i32)>) {
-    let mut next_tiles = HashSet::<(i32, i32, i32)>::new();
+    let mut next_tiles = HashSet::new();
+    let mut range = EMPTY_RANGE;
+    let mut next_range;
+
+    for tile in tiles.iter() {
+        range.set(tile);
+    }
 
     for _ in 0..100 {
         next_tiles.clear();
+        next_range = EMPTY_RANGE;
 
-        let mut min_x = i32::MAX;
-        let mut max_x = i32::MIN;
-        let mut min_y = i32::MAX;
-        let mut max_y = i32::MIN;
-        let mut min_z = i32::MAX;
-        let mut max_z = i32::MIN;
-        for tile in tiles.iter() {
-            min_x = min_x.min(tile.0);
-            max_x = max_x.max(tile.0);
-            min_y = min_y.min(tile.1);
-            max_y = max_y.max(tile.1);
-            min_z = min_z.min(tile.2);
-            max_z = max_z.max(tile.2);
-        }
-
-        for x in (min_x - 1)..=(max_x + 1) {
-            for y in (min_y - 1)..=(max_y + 1) {
-                for z in (min_z - 1)..=(max_z + 1) {
+        for x in (range.min_x - 1)..=(range.max_x + 1) {
+            for y in (range.min_y - 1)..=(range.max_y + 1) {
+                for z in (range.min_z - 1)..=(range.max_z + 1) {
                     if x + y + z != 0 {
                         continue;
                     }
@@ -80,12 +98,14 @@ fn simulate(tiles: &mut HashSet<(i32, i32, i32)>) {
                         .count();
                     if black_count == 2 || (black_count == 1 && tiles.contains(&(x, y, z))) {
                         next_tiles.insert((x, y, z));
+                        next_range.set(&(x, y, z));
                     }
                 }
             }
         }
 
         std::mem::swap(tiles, &mut next_tiles);
+        range = next_range;
     }
 }
 
