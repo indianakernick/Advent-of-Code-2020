@@ -5,3 +5,4 @@ authors = ["Indiana Kernick <indiana.kernick@gmail.com>"]
 edition = "2021"
 
 [dependencies]
+text_io = "0.1"
