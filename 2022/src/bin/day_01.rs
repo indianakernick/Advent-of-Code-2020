@@ -7,8 +7,8 @@ fn main() {
     let mut curr = 0u64;
 
     util::each_line("input/day_01.txt", |line| {
-        if line.len() == 0 {
-            if max.len() == 0 {
+        if line.is_empty() {
+            if max.is_empty() {
                 max.push(curr);
             } else if max[max.len() - 1] < curr {
                 if max.len() == PREFIX_COUNT {
@@ -20,7 +20,7 @@ fn main() {
 
             curr = 0;
         } else {
-            curr += u64::from_str_radix(line, 10).unwrap();
+            curr += line.parse::<u64>().unwrap();
         }
     });
 

@@ -1,12 +1,12 @@
 use advent_of_code_2022 as util;
-use text_io::read;
+use text_io::scan;
 
-fn stack_tops(stacks: &[Vec<char>]) -> String {
+fn stack_tops(stacks: &[Vec<u8>]) -> String {
     let mut s = String::new();
 
     for stack in stacks.iter() {
         if let Some(top) = stack.last() {
-            s.push(*top);
+            s.push(*top as char);
         }
     }
 
@@ -14,43 +14,72 @@ fn stack_tops(stacks: &[Vec<char>]) -> String {
 }
 
 fn main() {
-    let mut stacks_1 = vec![
-        vec!['J', 'H', 'G', 'M', 'Z', 'N', 'T', 'F'],
-        vec!['V', 'W', 'J'],
-        vec!['G', 'V', 'L', 'J', 'B', 'T', 'H'],
-        vec!['B', 'P', 'J', 'N', 'C', 'D', 'V', 'L'],
-        vec!['F', 'W', 'S', 'M', 'P', 'R', 'G'],
-        vec!['G', 'H', 'C', 'F', 'B', 'N', 'V', 'M'],
-        vec!['D', 'H', 'G', 'M', 'R'],
-        vec!['H', 'N', 'M', 'V', 'Z', 'D'],
-        vec!['G', 'N', 'F', 'H'],
-    ];
-    let mut stacks_2 = stacks_1.clone();
-    let mut skip = true;
+    let mut stacks_1 = Vec::<Vec<u8>>::new();
+    let mut stacks_2 = Vec::<Vec<u8>>::new();
+    let mut reading_stacks = true;
 
     util::each_line("input/day_05.txt", |line| {
-        if skip {
-            skip = !line.is_empty();
+        if reading_stacks {
+            if line.starts_with(" 1") {
+                return;
+            }
+
+            if line.is_empty() {
+                reading_stacks = false;
+
+                for stack in stacks_1.iter_mut() {
+                    stack.reverse();
+                }
+
+                stacks_2 = stacks_1.clone();
+                return;
+            }
+
+            let stack_count = (line.len() + 1) / 4;
+
+            if stacks_1.len() < stack_count {
+                stacks_1.resize_with(stack_count, Default::default);
+            }
+
+            let line_bytes = line.as_bytes();
+            let mut index = 0;
+
+            while index < line_bytes.len() - 2 {
+                if line_bytes[index] == b'[' {
+                    stacks_1[index / 4].push(line_bytes[index + 1]);
+                }
+                index += 4;
+            }
             return;
         }
 
-        let mut line_iter = line.bytes();
-
-        let count: usize = read!("move {} from ", line_iter);
-        let from: usize = read!("{} to ", line_iter);
-        let to: usize = read!("{}", line_iter);
+        let count: usize;
+        let from: usize;
+        let to: usize;
+        scan!(line.bytes() => "move {} from {} to {}", count, from, to);
         let from = from - 1;
         let to = to - 1;
+
+        if from == to {
+            return;
+        }
 
         for _ in 0..count {
             let top = stacks_1[from].pop().unwrap();
             stacks_1[to].push(top);
         }
 
-        let new_size = stacks_2[from].len() - count;
-        let top = Vec::from(&stacks_2[from][new_size..]);
-        stacks_2[to].extend(top.iter());
-        stacks_2[from].truncate(new_size);
+        let (from_stack, to_stack) = if from < to {
+            let (from_slice, to_slice) = stacks_2.split_at_mut(to);
+            (&mut from_slice[from], &mut to_slice[0])
+        } else {
+            let (to_slice, from_slice) = stacks_2.split_at_mut(from);
+            (&mut from_slice[0], &mut to_slice[to])
+        };
+        let new_size = from_stack.len() - count;
+
+        to_stack.extend_from_slice(&from_stack[new_size..]);
+        from_stack.truncate(new_size);
     });
 
     println!("Part 1: {}", stack_tops(&stacks_1));
