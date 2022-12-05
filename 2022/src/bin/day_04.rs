@@ -2,7 +2,8 @@ use advent_of_code_2022 as util;
 use text_io::read;
 
 fn main() {
-    let mut count = 0u64;
+    let mut contain_count = 0u64;
+    let mut overlap_count = 0u64;
 
     util::each_line("input/day_04.txt", |line| {
         let mut line_iter = line.bytes();
@@ -13,9 +14,15 @@ fn main() {
 
         if (first_low >= second_low && first_high <= second_high)
             || (second_low >= first_low && second_high <= first_high) {
-            count += 1;
+            contain_count += 1;
+        }
+
+        if (first_low <= second_high && first_high >= second_low)
+            || (second_low <= first_high && second_high >= first_low) {
+            overlap_count += 1;
         }
     });
 
-    println!("Part 1: {}", count);
+    println!("Part 1: {}", contain_count);
+    println!("Part 2: {}", overlap_count);
 }
