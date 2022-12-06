@@ -17,4 +17,15 @@ fn main() {
             break;
         }
     }
+
+    for i in 13..stream.len() {
+        let mut chars = HashSet::new();
+        for j in 0..14 {
+            chars.insert(stream[i - j]);
+        }
+        if chars.len() == 14 {
+            println!("Part 2: {}", i + 1);
+            break;
+        }
+    }
 }
