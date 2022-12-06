@@ -1,31 +1,21 @@
-use std::collections::HashSet;
+fn first_unique_sequence<const LEN: usize>(stream: &[u8]) -> usize {
+    for i in LEN - 1..stream.len() {
+        let mut set = 0u32;
+        for j in 0..LEN {
+            set |= 1 << (stream[i - j] - b'a');
+        }
+        if set.count_ones() == LEN as u32 {
+            return i + 1;
+        }
+    }
 
-use advent_of_code_2022 as util;
+    0
+}
 
 fn main() {
     let stream = std::fs::read_to_string("input/day_06.txt").unwrap();
     let stream = stream.as_bytes();
 
-    for i in 3..stream.len() {
-        let mut chars = HashSet::new();
-        chars.insert(stream[i - 3]);
-        chars.insert(stream[i - 2]);
-        chars.insert(stream[i - 1]);
-        chars.insert(stream[i]);
-        if chars.len() == 4 {
-            println!("Part 1: {}", i + 1);
-            break;
-        }
-    }
-
-    for i in 13..stream.len() {
-        let mut chars = HashSet::new();
-        for j in 0..14 {
-            chars.insert(stream[i - j]);
-        }
-        if chars.len() == 14 {
-            println!("Part 2: {}", i + 1);
-            break;
-        }
-    }
+    println!("Part 1: {}", first_unique_sequence::<4>(stream));
+    println!("Part 2: {}", first_unique_sequence::<14>(stream));
 }
