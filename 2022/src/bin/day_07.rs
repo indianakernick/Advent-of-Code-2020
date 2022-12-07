@@ -1,55 +1,24 @@
-use std::ptr::NonNull;
+use std::{ptr::NonNull, collections::HashMap};
 use advent_of_code_2022 as util;
 
 struct Directory {
-    files: Vec<Box<File>>,
+    files: HashMap<String, File>,
     size: Option<usize>,
 }
 
 impl Directory {
     fn new() -> Self {
-        Self { files: Vec::new(), size: None }
+        Self { files: HashMap::new(), size: None }
     }
 
     fn add_directory(&mut self, name: &str) {
-        for file in self.files.iter_mut() {
-            match file.as_mut() {
-                File::Directory(file_name, _) => {
-                    if file_name == name {
-                        return;
-                    }
-                }
-                File::Regular(file_name, _) => {
-                    if file_name == name {
-                        panic!("'{}' was a regular file but is now a directory", name);
-                    }
-                }
-            }
-        }
-
-        self.files.push(Box::new(File::Directory(name.to_owned(), Directory::new())));
+        self.files.entry(name.to_owned())
+            .or_insert(File::Directory(Directory::new()));
     }
 
     fn add_regular(&mut self, name: &str, size: usize) {
-        for file in self.files.iter() {
-            match file.as_ref() {
-                File::Directory(file_name, _) => {
-                    if file_name == name {
-                        panic!("'{}' was a directory but is now a regular file", name);
-                    }
-                }
-                File::Regular(file_name, reg) => {
-                    if file_name == name {
-                        if size != reg.size {
-                            panic!("Size of '{}' has changed from {} to {}", name, reg.size, size);
-                        }
-                        return;
-                    }
-                }
-            }
-        }
-
-        self.files.push(Box::new(File::Regular(name.to_owned(), Regular { size })));
+        self.files.entry(name.to_owned())
+            .or_insert(File::Regular(Regular { size }));
     }
 }
 
@@ -58,8 +27,8 @@ struct Regular {
 }
 
 enum File {
-    Directory(String, Directory),
-    Regular(String, Regular),
+    Directory(Directory),
+    Regular(Regular),
 }
 
 fn get_dir_size(dir: &mut Directory, small_dir_total: &mut usize) -> usize {
@@ -72,12 +41,12 @@ fn get_dir_size(dir: &mut Directory, small_dir_total: &mut usize) -> usize {
 
     let mut size = 0;
 
-    for file in dir.files.iter_mut() {
-        match file.as_mut() {
-            File::Directory(_, dir) => {
+    for (_, file) in dir.files.iter_mut() {
+        match file {
+            File::Directory(dir) => {
                 size += get_dir_size(dir, small_dir_total);
             }
-            File::Regular(_, reg) => {
+            File::Regular(reg) => {
                 size += reg.size;
             }
         }
@@ -97,12 +66,12 @@ fn find_smallest_dir_larger_than(dir: &Directory, minimum: usize, mut current: u
         current = dir_size;
     }
 
-    for file in dir.files.iter() {
-        match file.as_ref() {
-            File::Directory(_, dir) => {
+    for (_, file) in dir.files.iter() {
+        match file {
+            File::Directory(dir) => {
                 current = find_smallest_dir_larger_than(&dir, minimum, current);
             }
-            File::Regular(_, _) => continue,
+            File::Regular(_) => continue,
         }
     }
 
@@ -113,22 +82,15 @@ fn resolve_current(dir: &mut Directory, current_path: &[String]) -> NonNull<Dire
     if current_path.len() == 0 {
         NonNull::from(dir)
     } else {
-        for file in dir.files.iter_mut() {
-            match file.as_mut() {
-                File::Directory(name, next_dir) => {
-                    if *name == current_path[0] {
-                        return resolve_current(next_dir, &current_path[1..]);
-                    }
-                }
-                File::Regular(name, _) => {
-                    if *name == current_path[0] {
-                        panic!("Cannot enter regular file '{}'", name);
-                    }
-                }
+        match dir.files.get_mut(&current_path[0]) {
+            Some(File::Directory(next_dir)) => {
+                resolve_current(next_dir, &current_path[1..])
             }
+            Some(File::Regular(_)) => {
+                panic!("Cannot enter regular file '{}'", &current_path[0]);
+            }
+            None => panic!("Trying to enter a directory that you don't know exists")
         }
-
-        panic!("Trying to enter a directory that you don't know exists");
     }
 }
 
