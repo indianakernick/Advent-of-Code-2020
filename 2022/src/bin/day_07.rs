@@ -12,10 +12,10 @@ enum File {
     File(String, usize),
 }
 
-fn get_dir_size(dir: &mut Dir, total: &mut usize) -> usize {
+fn get_dir_size(dir: &mut Dir, small_dir_total: &mut usize) -> usize {
     if let Some(size) = dir.size {
         if size <= 100000 {
-            *total += size;
+            *small_dir_total += size;
         }
         return size;
     }
@@ -25,7 +25,7 @@ fn get_dir_size(dir: &mut Dir, total: &mut usize) -> usize {
     for file in dir.files.iter_mut() {
         match file.as_mut() {
             File::Dir(_, dir) => {
-                size += get_dir_size(dir, total);
+                size += get_dir_size(dir, small_dir_total);
             }
             File::File(_, file_size) => {
                 size += *file_size;
@@ -34,11 +34,29 @@ fn get_dir_size(dir: &mut Dir, total: &mut usize) -> usize {
     }
 
     if size <= 100000 {
-        *total += size;
+        *small_dir_total += size;
     }
 
     dir.size = Some(size);
     size
+}
+
+fn find_smallest_dir_larger_than(dir: &Dir, minimum: usize, mut current: usize) -> usize {
+    let dir_size = dir.size.unwrap();
+    if dir_size >= minimum && dir_size < current {
+        current = dir_size;
+    }
+
+    for file in dir.files.iter() {
+        match file.as_ref() {
+            File::Dir(_, dir) => {
+                current = find_smallest_dir_larger_than(&dir, minimum, current);
+            }
+            File::File(_, _) => continue,
+        }
+    }
+
+    current
 }
 
 fn main() {
@@ -135,7 +153,11 @@ fn main() {
         }
     });
 
-    let mut total = 0;
-    get_dir_size(&mut root, &mut total);
-    println!("Part 1: {}", total);
+    let mut small_dir_total = 0;
+    let root_size = get_dir_size(&mut root, &mut small_dir_total);
+    println!("Part 1: {}", small_dir_total);
+
+    let minimum = 30000000 - (70000000 - root_size);
+    // smallest that is larger than minimum
+    println!("Part 2: {}", find_smallest_dir_larger_than(&root, minimum, usize::MAX));
 }
