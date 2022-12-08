@@ -7,13 +7,13 @@ fn main() {
         rows.push(line.as_bytes().to_vec());
     });
 
-    let mut visible_count = 0;
+    let mut visible_count = 2 * (rows.len() - 2) + 2 * rows[0].len();
     let mut max_score = 0;
 
-    for y in 0..rows.len() {
+    for y in 1..rows.len() - 1 {
         let vertical_edge = y == 0 || y == rows.len() - 1;
 
-        for x in 0..rows[y].len() {
+        for x in 1..rows[y].len() - 1 {
             let mut visible = vertical_edge || x == 0 || x == rows[y].len() - 1;
             let mut score = 1;
             let height = rows[y][x];
@@ -58,13 +58,8 @@ fn main() {
                 }
             }
 
-            if visible {
-                visible_count += 1;
-            }
-
-            if score > max_score {
-                max_score = score;
-            }
+            visible_count += visible as usize;
+            max_score = max_score.max(score);
         }
     }
 
