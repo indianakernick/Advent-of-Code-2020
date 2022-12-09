@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::cmp::Ordering;
 use advent_of_code_2022 as util;
 
 fn main() {
@@ -15,10 +14,10 @@ fn main() {
         let distance: u32 = line[2..].parse().unwrap();
 
         let dir_vec = match direction {
-            b'U' => (0, -1),
-            b'R' => (1, 0),
-            b'D' => (0, 1),
-            b'L' => (-1, 0),
+            b'U' => ( 0, -1),
+            b'R' => ( 1,  0),
+            b'D' => ( 0,  1),
+            b'L' => (-1,  0),
             _ => panic!("Invalid direction")
         };
 
@@ -35,16 +34,18 @@ fn main() {
                     continue;
                 }
 
+                use std::cmp::Ordering::*;
+
                 match (tail_to_head.0.cmp(&0), tail_to_head.1.cmp(&0)) {
-                    (Ordering::Less, Ordering::Less) => { tail.0 -= 1; tail.1 -= 1 },
-                    (Ordering::Less, Ordering::Equal) => { tail.0 -= 1 },
-                    (Ordering::Less, Ordering::Greater) => { tail.0 -= 1; tail.1 += 1 },
-                    (Ordering::Equal, Ordering::Less) => { tail.1 -= 1 },
-                    (Ordering::Equal, Ordering::Equal) => continue,
-                    (Ordering::Equal, Ordering::Greater) => { tail.1 += 1 },
-                    (Ordering::Greater, Ordering::Less) => { tail.0 += 1; tail.1 -= 1 },
-                    (Ordering::Greater, Ordering::Equal) => { tail.0 += 1 },
-                    (Ordering::Greater, Ordering::Greater) => { tail.0 += 1; tail.1 += 1 },
+                    (Less,    Less)    => { tail.0 -= 1; tail.1 -= 1 },
+                    (Less,    Equal)   => { tail.0 -= 1 },
+                    (Less,    Greater) => { tail.0 -= 1; tail.1 += 1 },
+                    (Equal,   Less)    => { tail.1 -= 1 },
+                    (Equal,   Equal)   => continue,
+                    (Equal,   Greater) => { tail.1 += 1 },
+                    (Greater, Less)    => { tail.0 += 1; tail.1 -= 1 },
+                    (Greater, Equal)   => { tail.0 += 1 },
+                    (Greater, Greater) => { tail.0 += 1; tail.1 += 1 },
                 }
             }
 
