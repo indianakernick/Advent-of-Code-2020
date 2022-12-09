@@ -10,10 +10,7 @@ fn main() {
     visits_9.insert((0, 0));
 
     util::each_line("input/day_09.txt", |line| {
-        let direction = line.as_bytes()[0];
-        let distance: u32 = line[2..].parse().unwrap();
-
-        let dir_vec = match direction {
+        let direction = match line.as_bytes()[0] {
             b'U' => ( 0, -1),
             b'R' => ( 1,  0),
             b'D' => ( 0,  1),
@@ -21,9 +18,11 @@ fn main() {
             _ => panic!("Invalid direction")
         };
 
+        let distance: u32 = line[2..].parse().unwrap();
+
         for _ in 0..distance {
-            rope[0].0 += dir_vec.0;
-            rope[0].1 += dir_vec.1;
+            rope[0].0 += direction.0;
+            rope[0].1 += direction.1;
 
             for i in 1..rope.len() {
                 let head = rope[i - 1];
@@ -34,19 +33,8 @@ fn main() {
                     continue;
                 }
 
-                use std::cmp::Ordering::*;
-
-                match (tail_to_head.0.cmp(&0), tail_to_head.1.cmp(&0)) {
-                    (Less,    Less)    => { tail.0 -= 1; tail.1 -= 1 },
-                    (Less,    Equal)   => { tail.0 -= 1 },
-                    (Less,    Greater) => { tail.0 -= 1; tail.1 += 1 },
-                    (Equal,   Less)    => { tail.1 -= 1 },
-                    (Equal,   Equal)   => continue,
-                    (Equal,   Greater) => { tail.1 += 1 },
-                    (Greater, Less)    => { tail.0 += 1; tail.1 -= 1 },
-                    (Greater, Equal)   => { tail.0 += 1 },
-                    (Greater, Greater) => { tail.0 += 1; tail.1 += 1 },
-                }
+                tail.0 += tail_to_head.0.signum();
+                tail.1 += tail_to_head.1.signum();
             }
 
             visits_1.insert(rope[1]);
