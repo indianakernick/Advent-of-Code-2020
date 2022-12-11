@@ -15,18 +15,19 @@ struct Monkey {
     inspection_count: usize,
 }
 
-fn simulate<const PART_1: bool>(mut monkeys: Vec<Monkey>, rounds: usize) -> usize {
+fn process<const PART_1: bool>(mut monkeys: Vec<Monkey>, rounds: usize) -> usize {
     let mut throws = Vec::<(usize, u64)>::new();
-
     let modulus: u64 = monkeys.iter().map(|m| m.divisor).product();
 
     for _ in 0..rounds {
         for i in 0..monkeys.len() {
-            for item in monkeys[i].items.iter() {
-                let mut new_worry: u64 = match monkeys[i].operation {
+            let monkey = &mut monkeys[i];
+
+            for item in monkey.items.iter() {
+                let mut new_worry = match monkey.operation {
                     Operation::Add(add) => item + add,
                     Operation::Mul(mul) => item * mul,
-                    Operation::Square => item * item
+                    Operation::Square => item * item,
                 };
 
                 if PART_1 {
@@ -35,20 +36,22 @@ fn simulate<const PART_1: bool>(mut monkeys: Vec<Monkey>, rounds: usize) -> usiz
                     new_worry %= modulus;
                 }
 
-                let throw_target = if new_worry % monkeys[i].divisor == 0 {
-                    monkeys[i].test_true
+                let throw_target = if new_worry % monkey.divisor == 0 {
+                    monkey.test_true
                 } else {
-                    monkeys[i].test_false
+                    monkey.test_false
                 };
                 throws.push((throw_target, new_worry));
             }
 
-            monkeys[i].items.clear();
-            monkeys[i].inspection_count += throws.len();
+            monkey.items.clear();
+            monkey.inspection_count += throws.len();
 
-            for (target, worry) in throws.drain(..) {
-                monkeys[target].items.push(worry);
+            for (target, worry) in throws.iter() {
+                monkeys[*target].items.push(*worry);
             }
+
+            throws.clear();
         }
     }
 
@@ -126,6 +129,6 @@ fn main() {
         });
     }
 
-    println!("Part 1: {}", simulate::<true>(monkeys.clone(), 20));
-    println!("Part 2: {}", simulate::<false>(monkeys, 10000));
+    println!("Part 1: {}", process::<true>(monkeys.clone(), 20));
+    println!("Part 2: {}", process::<false>(monkeys, 10000));
 }
