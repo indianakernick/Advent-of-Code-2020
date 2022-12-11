@@ -1,16 +1,60 @@
+#[derive(Clone)]
 enum Operation {
-    Add(i32),
-    Mul(i32),
+    Add(u64),
+    Mul(u64),
     Square,
 }
 
+#[derive(Clone)]
 struct Monkey {
-    items: Vec<i32>,
+    items: Vec<u64>,
     operation: Operation,
-    divisor: i32,
+    divisor: u64,
     test_true: usize,
     test_false: usize,
     inspection_count: usize,
+}
+
+fn simulate<const PART_1: bool>(mut monkeys: Vec<Monkey>, rounds: usize) -> usize {
+    let mut throws = Vec::<(usize, u64)>::new();
+
+    let modulus: u64 = monkeys.iter().map(|m| m.divisor).product();
+
+    for _ in 0..rounds {
+        for i in 0..monkeys.len() {
+            for item in monkeys[i].items.iter() {
+                let mut new_worry: u64 = match monkeys[i].operation {
+                    Operation::Add(add) => item + add,
+                    Operation::Mul(mul) => item * mul,
+                    Operation::Square => item * item
+                };
+
+                if PART_1 {
+                    new_worry /= 3;
+                } else {
+                    new_worry %= modulus;
+                }
+
+                let throw_target = if new_worry % monkeys[i].divisor == 0 {
+                    monkeys[i].test_true
+                } else {
+                    monkeys[i].test_false
+                };
+                throws.push((throw_target, new_worry));
+            }
+
+            monkeys[i].items.clear();
+            monkeys[i].inspection_count += throws.len();
+
+            for (target, worry) in throws.drain(..) {
+                monkeys[target].items.push(worry);
+            }
+        }
+    }
+
+    let mut counts = monkeys.iter().map(|m| m.inspection_count).collect::<Vec<_>>();
+    counts.sort_unstable_by(|a, b| b.cmp(a));
+    counts[0] * counts[1]
 }
 
 fn main() {
@@ -82,36 +126,6 @@ fn main() {
         });
     }
 
-    let mut throws = Vec::<(usize, i32)>::new();
-
-    for r in 0..20 {
-        for i in 0..monkeys.len() {
-            for item in monkeys[i].items.iter() {
-                let new_worry = match monkeys[i].operation {
-                    Operation::Add(add) => item + add,
-                    Operation::Mul(mul) => item * mul,
-                    Operation::Square => item * item,
-                } / 3;
-                let throw_target = if new_worry % monkeys[i].divisor == 0 {
-                    monkeys[i].test_true
-                } else {
-                    monkeys[i].test_false
-                };
-                throws.push((throw_target, new_worry));
-            }
-
-            monkeys[i].items.clear();
-            monkeys[i].inspection_count += throws.len();
-
-            for (target, worry) in throws.iter() {
-                monkeys[*target].items.push(*worry);
-            }
-
-            throws.clear();
-        }
-    }
-
-    let mut counts = monkeys.iter().map(|m| m.inspection_count).collect::<Vec<_>>();
-    counts.sort_unstable_by(|a, b| b.cmp(a));
-    println!("Part 1: {}", counts[0] * counts[1]);
+    println!("Part 1: {}", simulate::<true>(monkeys.clone(), 20));
+    println!("Part 2: {}", simulate::<false>(monkeys, 10000));
 }
