@@ -41,6 +41,7 @@ fn main() {
     let mut map = Vec::<Vec<u8>>::new();
     let mut pos = (0, 0);
     let mut end_pos = (0, 0);
+    let mut lowest = Vec::new();
 
     util::each_line("input/day_12.txt", |line| {
         if let Some(start_x) = line.bytes().position(|c| c == b'S') {
@@ -53,6 +54,10 @@ fn main() {
             end_pos.1 = map.len();
         }
 
+        for low_point in line.bytes().enumerate().filter(|(_, c)| *c == b'a') {
+            lowest.push((low_point.0, map.len()));
+        }
+
         map.push(line.into());
     });
 
@@ -60,4 +65,8 @@ fn main() {
     map[end_pos.1][end_pos.0] = b'z';
 
     println!("Part 1: {}", search(pos, end_pos, &map).unwrap());
+    println!("Part 2: {}", lowest.iter()
+        .filter_map(|pos| search(*pos, end_pos, &map))
+        .min()
+        .unwrap());
 }
