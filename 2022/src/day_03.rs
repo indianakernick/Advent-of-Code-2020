@@ -1,5 +1,3 @@
-use advent_of_code_2022 as util;
-
 fn priority_for_item(item: u8) -> u64 {
     if item.is_ascii_lowercase() {
         (item - b'a' + 1) as u64
@@ -8,7 +6,7 @@ fn priority_for_item(item: u8) -> u64 {
     }
 }
 
-fn main() {
+pub fn solve(input: &str) -> (u64, u64) {
     const GROUP_SIZE: usize = 3;
 
     let mut misplaced_sum = 0u64;
@@ -16,7 +14,7 @@ fn main() {
     let mut group_members: [u64; GROUP_SIZE] = Default::default();
     let mut member_index = 0usize;
 
-    util::each_line("input/day_03.txt", |line| {
+    for line in input.lines() {
         let first = line[..line.len() / 2].as_bytes();
         let second = line[line.len() / 2..].as_bytes();
         let mut first_set = 0u64;
@@ -54,8 +52,7 @@ fn main() {
         if member_index == GROUP_SIZE {
             member_index = 0;
         }
-    });
+    }
 
-    println!("Part 1: {}", misplaced_sum);
-    println!("Part 2: {}", group_sum);
+    (misplaced_sum, group_sum)
 }

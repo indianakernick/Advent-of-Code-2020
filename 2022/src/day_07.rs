@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use advent_of_code_2022 as util;
 
 #[derive(Clone, Copy)]
 struct File {
@@ -15,11 +14,11 @@ fn path_join(parent: &str, child: &str) -> String {
     path
 }
 
-fn main() {
+pub fn solve(input: &str) -> (usize, usize) {
     let mut current = "/".to_owned();
     let mut tree = HashMap::<String, File>::new();
 
-    util::each_line("input/day_07.txt", |line| {
+    for line in input.lines() {
         if let Some(path) = line.strip_prefix("$ cd ") {
             if path == "/" {
                 current.clear();
@@ -29,23 +28,23 @@ fn main() {
                 current.push('/');
                 current.push_str(path);
             }
-            return;
+            continue;
         }
 
         if line == "$ ls" {
-            return;
+            continue;
         }
 
         if let Some(name) = line.strip_prefix("dir ") {
             tree.insert(path_join(&current, name), File { dir: true, size: 0 });
-            return;
+            continue;
         }
 
         if let Some((size, name)) = line.split_once(' ') {
             let size = size.parse().unwrap();
             tree.insert(path_join(&current, name), File { dir: false, size });
         }
-    });
+    }
 
     let mut paths = tree.iter()
         .map(|pair| pair.0.clone())
@@ -68,15 +67,17 @@ fn main() {
         }
     }
 
-    println!("Part 1: {}", tree.iter()
+    let part_1 = tree.iter()
         .filter(|(_, f)| f.dir && f.size <= 100000)
         .map(|(_, f)| f.size)
-        .sum::<usize>());
+        .sum::<usize>();
 
     let minimum = 30000000 - (70000000 - root_size);
 
-    println!("Part 2: {}", tree.iter()
+    let part_2 = tree.iter()
         .filter(|(_, f)| f.dir && f.size >= minimum)
         .map(|(_, f)| f.size)
-        .min().unwrap());
+        .min().unwrap();
+
+    (part_1, part_2)
 }

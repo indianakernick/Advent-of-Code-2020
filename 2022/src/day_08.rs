@@ -1,12 +1,5 @@
-use advent_of_code_2022 as util;
-
-fn main() {
-    let mut rows = Vec::new();
-
-    util::each_line("input/day_08.txt", |line| {
-        rows.push(line.as_bytes().to_vec());
-    });
-
+pub fn solve(input: &str) -> (usize, usize) {
+    let rows = input.lines().map(|l| l.as_bytes()).collect::<Vec<_>>();
     let mut visible_count = 2 * (rows.len() - 2) + 2 * rows[0].len();
     let mut max_score = 0;
 
@@ -63,6 +56,5 @@ fn main() {
         }
     }
 
-    println!("Part 1: {}", visible_count);
-    println!("Part 2: {}", max_score);
+    (visible_count, max_score)
 }

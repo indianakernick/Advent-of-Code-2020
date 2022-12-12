@@ -1,7 +1,6 @@
 use std::collections::HashSet;
-use advent_of_code_2022 as util;
 
-fn main() {
+pub fn solve(input: &str) -> (usize, usize) {
     let mut rope: [(i32, i32); 10] = Default::default();
     let mut visits_1 = HashSet::<(i32, i32)>::new();
     let mut visits_9 = HashSet::<(i32, i32)>::new();
@@ -9,7 +8,7 @@ fn main() {
     visits_1.insert((0, 0));
     visits_9.insert((0, 0));
 
-    util::each_line("input/day_09.txt", |line| {
+    for line in input.lines() {
         let direction = match line.as_bytes()[0] {
             b'U' => ( 0, -1),
             b'R' => ( 1,  0),
@@ -40,8 +39,7 @@ fn main() {
             visits_1.insert(rope[1]);
             visits_9.insert(rope[9]);
         }
-    });
+    }
 
-    println!("Part 1: {}", visits_1.len());
-    println!("Part 2: {}", visits_9.len());
+    (visits_1.len(), visits_9.len())
 }

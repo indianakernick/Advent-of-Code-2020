@@ -1,5 +1,3 @@
-use advent_of_code_2022 as util;
-
 fn can_step(from: u8, to: u8) -> bool {
     from >= to || from + 1 == to
 }
@@ -37,13 +35,13 @@ fn search(
     ).map(|(_, c)| c)
 }
 
-fn main() {
+pub fn solve(input: &str) -> (usize, usize) {
     let mut map = Vec::<Vec<u8>>::new();
     let mut start_pos = (0, 0);
     let mut end_pos = (0, 0);
     let mut low_points = Vec::new();
 
-    util::each_line("input/day_12.txt", |line| {
+    for line in input.lines() {
         for (i, c) in line.bytes().enumerate() {
             match c {
                 b'S' => start_pos = (i, map.len()),
@@ -54,15 +52,17 @@ fn main() {
         }
 
         map.push(line.into());
-    });
+    }
 
     map[start_pos.1][start_pos.0] = b'a';
     map[end_pos.1][end_pos.0] = b'z';
 
-    println!("Part 1: {}", search(start_pos, end_pos, &map).unwrap());
-    println!("Part 2: {}", low_points
-        .iter()
-        .filter_map(|pos| search(*pos, end_pos, &map))
-        .min()
-        .unwrap());
+    (
+        search(start_pos, end_pos, &map).unwrap(),
+        low_points
+            .iter()
+            .filter_map(|pos| search(*pos, end_pos, &map))
+            .min()
+            .unwrap(),
+    )
 }

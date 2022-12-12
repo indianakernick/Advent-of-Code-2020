@@ -1,4 +1,3 @@
-use advent_of_code_2022 as util;
 use text_io::scan;
 
 fn stack_tops(stacks: &[Vec<u8>]) -> String {
@@ -13,15 +12,15 @@ fn stack_tops(stacks: &[Vec<u8>]) -> String {
     s
 }
 
-fn main() {
+pub fn solve(input: &str) -> (String, String) {
     let mut stacks_1 = Vec::<Vec<u8>>::new();
     let mut stacks_2 = Vec::<Vec<u8>>::new();
     let mut reading_stacks = true;
 
-    util::each_line("input/day_05.txt", |line| {
+    for line in input.lines() {
         if reading_stacks {
             if line.starts_with(" 1") {
-                return;
+                continue;
             }
 
             if line.is_empty() {
@@ -32,7 +31,7 @@ fn main() {
                 }
 
                 stacks_2 = stacks_1.clone();
-                return;
+                continue;
             }
 
             let stack_count = (line.len() + 1) / 4;
@@ -50,7 +49,7 @@ fn main() {
                 }
                 index += 4;
             }
-            return;
+            continue;
         }
 
         let count: usize;
@@ -61,7 +60,7 @@ fn main() {
         let to = to - 1;
 
         if from == to {
-            return;
+            continue;
         }
 
         for _ in 0..count {
@@ -80,8 +79,7 @@ fn main() {
 
         to_stack.extend_from_slice(&from_stack[new_size..]);
         from_stack.truncate(new_size);
-    });
+    }
 
-    println!("Part 1: {}", stack_tops(&stacks_1));
-    println!("Part 2: {}", stack_tops(&stacks_2));
+    (stack_tops(&stacks_1), stack_tops(&stacks_2))
 }

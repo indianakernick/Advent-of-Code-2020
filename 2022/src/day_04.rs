@@ -1,11 +1,10 @@
-use advent_of_code_2022 as util;
 use text_io::scan;
 
-fn main() {
+pub fn solve(input: &str) -> (u64, u64) {
     let mut contain_count = 0u64;
     let mut overlap_count = 0u64;
 
-    util::each_line("input/day_04.txt", |line| {
+    for line in input.lines() {
         let first_low: u32;
         let first_high: u32;
         let second_low: u32;
@@ -21,8 +20,7 @@ fn main() {
             || (second_low <= first_high && second_high >= first_low) {
             overlap_count += 1;
         }
-    });
+    }
 
-    println!("Part 1: {}", contain_count);
-    println!("Part 2: {}", overlap_count);
+    (contain_count, overlap_count)
 }

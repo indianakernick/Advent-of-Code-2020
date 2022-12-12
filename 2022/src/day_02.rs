@@ -1,6 +1,4 @@
-use advent_of_code_2022 as util;
-
-fn main() {
+pub fn solve(input: &str) -> (u64, u64) {
     const LOSING_MOVE: [u8; 3] = [
         2, // Rock defeats Scissors
         0, // Paper defeats Rock
@@ -10,7 +8,7 @@ fn main() {
     let mut score_1 = 0u64;
     let mut score_2 = 0u64;
 
-    util::each_line("input/day_02.txt", |line| {
+    for line in input.lines() {
         let opponent = line.as_bytes()[0] - b'A';
         let me = line.as_bytes()[2] - b'X';
 
@@ -33,8 +31,7 @@ fn main() {
         } else if outcome == 2 {
             score_2 += LOSING_MOVE[LOSING_MOVE[opponent as usize] as usize] as u64 + 1;
         }
-    });
+    }
 
-    println!("Part 1: {}", score_1);
-    println!("Part 2: {}", score_2);
+    (score_1, score_2)
 }

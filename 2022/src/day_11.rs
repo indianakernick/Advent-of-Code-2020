@@ -60,8 +60,7 @@ fn process<const PART_1: bool>(mut monkeys: Vec<Monkey>, rounds: usize) -> usize
     counts[0] * counts[1]
 }
 
-fn main() {
-    let input = std::fs::read_to_string("input/day_11.txt").unwrap();
+pub fn solve(input: &str) -> (usize, usize) {
     let mut monkeys = Vec::<Monkey>::new();
     let mut line_iter = input.lines();
 
@@ -129,6 +128,8 @@ fn main() {
         });
     }
 
-    println!("Part 1: {}", process::<true>(monkeys.clone(), 20));
-    println!("Part 2: {}", process::<false>(monkeys, 10000));
+    (
+        process::<true>(monkeys.clone(), 20),
+        process::<false>(monkeys, 10000),
+    )
 }

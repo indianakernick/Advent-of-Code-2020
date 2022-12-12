@@ -12,10 +12,11 @@ fn first_unique_sequence<const LEN: usize>(stream: &[u8]) -> usize {
     0
 }
 
-fn main() {
-    let stream = std::fs::read_to_string("input/day_06.txt").unwrap();
-    let stream = stream.as_bytes();
+pub fn solve(input: &str) -> (usize, usize) {
+    let input = input.as_bytes();
 
-    println!("Part 1: {}", first_unique_sequence::<4>(stream));
-    println!("Part 2: {}", first_unique_sequence::<14>(stream));
+    (
+        first_unique_sequence::<4>(input),
+        first_unique_sequence::<14>(input),
+    )
 }
