@@ -56,3 +56,18 @@ pub fn solve(input: &str) -> (u64, u64) {
 
     (misplaced_sum, group_sum)
 }
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"vJrwpWtwJgWrhcsFMMfFFhFp
+jqHRNqRjqzjGDLGLrsFMfFZSrLrFZsSL
+PmmdzqPrVvPwwTWBwg
+wMqvLMZHhHMvwLHjbvcjnnSBnvTQFn
+ttgJtRGJQctTZtZT
+CrZsJsPPZsGzwwsLwLmpwMDw";
+    let output = solve(input);
+    assert_eq!(output.0, 157);
+    assert_eq!(output.1, 70);
+}

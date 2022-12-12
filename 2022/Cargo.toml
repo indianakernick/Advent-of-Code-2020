@@ -8,3 +8,7 @@ edition = "2021"
 clap = { version = "4", features = ["derive"] }
 text_io = "0.1"
 pathfinding = "4"
+
+[profile.release]
+lto = true
+strip = true

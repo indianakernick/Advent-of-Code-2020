@@ -24,3 +24,28 @@ pub fn solve(input: &str) -> (u64, u64) {
 
     (max[0], max.iter().sum::<u64>())
 }
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"1000
+2000
+3000
+
+4000
+
+5000
+6000
+
+7000
+8000
+9000
+
+10000
+
+";
+    let output = solve(input);
+    assert_eq!(output.0, 24000);
+    assert_eq!(output.1, 45000);
+}

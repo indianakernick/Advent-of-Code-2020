@@ -20,3 +20,48 @@ pub fn solve(input: &str) -> (usize, usize) {
         first_unique_sequence::<14>(input),
     )
 }
+
+#[cfg(test)]
+#[test]
+fn example_1() {
+    let input = "mjqjpqmgbljsphdztnvjfqwrcgsmlb";
+    let output = solve(input);
+    assert_eq!(output.0, 7);
+    assert_eq!(output.1, 19);
+}
+
+#[cfg(test)]
+#[test]
+fn example_2() {
+    let input = "bvwbjplbgvbhsrlpgdmjqwftvncz";
+    let output = solve(input);
+    assert_eq!(output.0, 5);
+    assert_eq!(output.1, 23);
+}
+
+#[cfg(test)]
+#[test]
+fn example_3() {
+    let input = "nppdvjthqldpwncqszvftbrmjlhg";
+    let output = solve(input);
+    assert_eq!(output.0, 6);
+    assert_eq!(output.1, 23);
+}
+
+#[cfg(test)]
+#[test]
+fn example_4() {
+    let input = "nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg";
+    let output = solve(input);
+    assert_eq!(output.0, 10);
+    assert_eq!(output.1, 29);
+}
+
+#[cfg(test)]
+#[test]
+fn example_5() {
+    let input = "zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw";
+    let output = solve(input);
+    assert_eq!(output.0, 11);
+    assert_eq!(output.1, 26);
+}

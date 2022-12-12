@@ -66,3 +66,17 @@ pub fn solve(input: &str) -> (usize, usize) {
             .unwrap(),
     )
 }
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"Sabqponm
+abcryxxl
+accszExk
+acctuvwj
+abdefghi";
+    let output = solve(input);
+    assert_eq!(output.0, 31);
+    assert_eq!(output.1, 29);
+}

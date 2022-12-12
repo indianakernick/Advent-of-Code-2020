@@ -35,3 +35,15 @@ pub fn solve(input: &str) -> (u64, u64) {
 
     (score_1, score_2)
 }
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"A Y
+B X
+C Z";
+    let output = solve(input);
+    assert_eq!(output.0, 15);
+    assert_eq!(output.1, 12);
+}

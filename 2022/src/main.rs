@@ -14,16 +14,22 @@ mod day_12;
 use clap::Parser;
 use std::fmt::Display;
 
+const DAY_COUNT: u8 = 12;
+
 #[derive(Parser)]
 struct Cli {
-    #[arg(value_parser = clap::value_parser!(u8).range(1..=12))]
-    day: u8
+    /// Run a specific day or run all days if unspecified
+    #[arg(value_parser = clap::value_parser!(u8).range(1..=DAY_COUNT as i64))]
+    day: Option<u8>,
 }
 
-fn print_part(num: u8, output: String) {
-    print!("Part {}:", num);
+fn print_part(num: u8, mut output: String) {
+    print!("Part {num}:");
+    if output.ends_with('\n') {
+        output.pop();
+    }
     let sep = if output.contains("\n") { '\n' } else { ' ' };
-    println!("{}{}", sep, output);
+    println!("{sep}{output}");
 }
 
 fn print_output<P1: Display, P2: Display>(output: (P1, P2)) {
@@ -31,23 +37,36 @@ fn print_output<P1: Display, P2: Display>(output: (P1, P2)) {
     print_part(2, output.1.to_string());
 }
 
+fn solve_and_print(day: u8) {
+    match day {
+        1 => print_output(day_01::solve(include_str!("../input/day_01.txt"))),
+        2 => print_output(day_02::solve(include_str!("../input/day_02.txt"))),
+        3 => print_output(day_03::solve(include_str!("../input/day_03.txt"))),
+        4 => print_output(day_04::solve(include_str!("../input/day_04.txt"))),
+        5 => print_output(day_05::solve(include_str!("../input/day_05.txt"))),
+        6 => print_output(day_06::solve(include_str!("../input/day_06.txt"))),
+        7 => print_output(day_07::solve(include_str!("../input/day_07.txt"))),
+        8 => print_output(day_08::solve(include_str!("../input/day_08.txt"))),
+        9 => print_output(day_09::solve(include_str!("../input/day_09.txt"))),
+       10 => print_output(day_10::solve(include_str!("../input/day_10.txt"))),
+       11 => print_output(day_11::solve(include_str!("../input/day_11.txt"))),
+       12 => print_output(day_12::solve(include_str!("../input/day_12.txt"))),
+       _ => unreachable!(),
+   }
+}
+
 fn main() {
     let cli = Cli::parse();
-    let input = std::fs::read_to_string(format!("input/day_{:02}.txt", cli.day)).unwrap();
 
-    match cli.day {
-         1 => print_output(day_01::solve(&input)),
-         2 => print_output(day_02::solve(&input)),
-         3 => print_output(day_03::solve(&input)),
-         4 => print_output(day_04::solve(&input)),
-         5 => print_output(day_05::solve(&input)),
-         6 => print_output(day_06::solve(&input)),
-         7 => print_output(day_07::solve(&input)),
-         8 => print_output(day_08::solve(&input)),
-         9 => print_output(day_09::solve(&input)),
-        10 => print_output(day_10::solve(&input)),
-        11 => print_output(day_11::solve(&input)),
-        12 => print_output(day_12::solve(&input)),
-        _ => unreachable!(),
+    if let Some(day) = cli.day {
+        solve_and_print(day);
+    } else {
+        for day in 1..=DAY_COUNT {
+            println!("Day {day}");
+            solve_and_print(day);
+            if day != DAY_COUNT {
+                println!();
+            }
+        }
     }
 }

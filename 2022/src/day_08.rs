@@ -58,3 +58,17 @@ pub fn solve(input: &str) -> (usize, usize) {
 
     (visible_count, max_score)
 }
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"30373
+25512
+65332
+33549
+35390";
+    let output = solve(input);
+    assert_eq!(output.0, 21);
+    assert_eq!(output.1, 8);
+}
