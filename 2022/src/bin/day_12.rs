@@ -5,12 +5,12 @@ fn can_step(from: u8, to: u8) -> bool {
 }
 
 fn search(
-    pos: (usize, usize),
+    start_pos: (usize, usize),
     end_pos: (usize, usize),
     map: &[Vec<u8>]
 ) -> Option<usize> {
     pathfinding::directed::dijkstra::dijkstra(
-        &pos,
+        &start_pos,
         |pos| {
             let curr = map[pos.1][pos.0];
             let mut branches = [None; 4];
@@ -33,39 +33,35 @@ fn search(
 
             branches.into_iter().filter_map(|b| b.map(|p| (p, 1)))
         },
-        |p| p.0 == end_pos.0 && p.1 == end_pos.1
+        |pos| pos.0 == end_pos.0 && pos.1 == end_pos.1
     ).map(|(_, c)| c)
 }
 
 fn main() {
     let mut map = Vec::<Vec<u8>>::new();
-    let mut pos = (0, 0);
+    let mut start_pos = (0, 0);
     let mut end_pos = (0, 0);
-    let mut lowest = Vec::new();
+    let mut low_points = Vec::new();
 
     util::each_line("input/day_12.txt", |line| {
-        if let Some(start_x) = line.bytes().position(|c| c == b'S') {
-            pos.0 = start_x;
-            pos.1 = map.len();
-        }
-
-        if let Some(end_x) = line.bytes().position(|c| c == b'E') {
-            end_pos.0 = end_x;
-            end_pos.1 = map.len();
-        }
-
-        for low_point in line.bytes().enumerate().filter(|(_, c)| *c == b'a') {
-            lowest.push((low_point.0, map.len()));
+        for (i, c) in line.bytes().enumerate() {
+            match c {
+                b'S' => start_pos = (i, map.len()),
+                b'E' => end_pos = (i, map.len()),
+                b'a' => low_points.push((i, map.len())),
+                _ => {}
+            }
         }
 
         map.push(line.into());
     });
 
-    map[pos.1][pos.0] = b'a';
+    map[start_pos.1][start_pos.0] = b'a';
     map[end_pos.1][end_pos.0] = b'z';
 
-    println!("Part 1: {}", search(pos, end_pos, &map).unwrap());
-    println!("Part 2: {}", lowest.iter()
+    println!("Part 1: {}", search(start_pos, end_pos, &map).unwrap());
+    println!("Part 2: {}", low_points
+        .iter()
         .filter_map(|pos| search(*pos, end_pos, &map))
         .min()
         .unwrap());
