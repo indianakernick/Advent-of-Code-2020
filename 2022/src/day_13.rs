@@ -1,13 +1,94 @@
 use std::cmp::Ordering;
 
-enum Packet {
+enum PacketToken {
     Int(i32),
-    List(Vec<Packet>),
+    Open,
+    Close,
 }
+
+struct Packet(Vec<PacketToken>);
 
 impl Packet {
     fn divider(val: i32) -> Self {
-        Packet::List(vec![Packet::List(vec![Packet::Int(val)])])
+        use PacketToken::*;
+        Self(vec![Open, Open, Int(val), Close, Close])
+    }
+}
+
+fn compare<'l, 'r>(mut left: &'l[PacketToken], mut right: &'r[PacketToken])
+    -> (Ordering, &'l[PacketToken], &'r[PacketToken])
+{
+    use PacketToken::*;
+
+    match (left.is_empty(), right.is_empty()) {
+        (true, true) => return (Ordering::Equal, left, right),
+        (true, false) => return (Ordering::Less, left, right),
+        (false, true) => return (Ordering::Greater, left, right),
+        (false, false) => {}
+    }
+
+    match (&left[0], &right[0]) {
+        (Int(l), Int(r)) => (l.cmp(&r), &left[1..], &right[1..]),
+
+        (Int(_), Open) => {
+            if let Close = right[1] {
+                (Ordering::Greater, left, right)
+            } else {
+                let (order, left_rest, right_rest) = compare(left, &right[1..]);
+
+                if !order.is_eq() {
+                    return (order, left, right);
+                }
+
+                if let Close = right_rest[0] {
+                    (Ordering::Equal, left_rest, &right_rest[1..])
+                } else {
+                    (Ordering::Less, left, right)
+                }
+            }
+        },
+
+        (Open, Int(_)) => {
+            if let Close = left[1] {
+                (Ordering::Less, left, right)
+            } else {
+                let (order, left_rest, right_rest) = compare(&left[1..], right);
+
+                if !order.is_eq() {
+                    return (order, left, right);
+                }
+
+                if let Close = left_rest[0] {
+                    (Ordering::Equal, &left_rest[1..], right_rest)
+                } else {
+                    (Ordering::Greater, left, right)
+                }
+            }
+        }
+
+        (Open, Open) => {
+            left = &left[1..];
+            right = &right[1..];
+
+            loop {
+                match (&left[0], &right[0]) {
+                    (Close, Close) => return (Ordering::Equal, &left[1..], &right[1..]),
+                    (Close, _) => return (Ordering::Less, left, right),
+                    (_, Close) => return (Ordering::Greater, left, right),
+                    _ => {}
+                }
+
+                let (order, left_rest, right_rest) = compare(left, right);
+
+                if !order.is_eq() {
+                    return (order, left, right);
+                }
+                left = left_rest;
+                right = right_rest;
+            }
+        },
+
+        _ => panic!("Invalid packet"),
     }
 }
 
@@ -25,78 +106,43 @@ impl PartialEq for Packet {
 
 impl Ord for Packet {
     fn cmp(&self, other: &Self) -> Ordering {
-        match (self, other) {
-            (Packet::Int(l), Packet::Int(r)) => l.cmp(&r),
-            (Packet::Int(l), Packet::List(r)) => {
-                if r.is_empty() {
-                    Ordering::Greater
-                } else {
-                    let order = Packet::Int(*l).cmp(&r[0]);
-                    if !order.is_eq() {
-                        return order;
-                    }
-                    if r.len() > 1 {
-                        Ordering::Less
-                    } else {
-                        Ordering::Equal
-                    }
-                }
-            },
-            (Packet::List(l), Packet::Int(r)) => {
-                if l.is_empty() {
-                    Ordering::Less
-                } else {
-                    let order = l[0].cmp(&Packet::Int(*r));
-                    if !order.is_eq() {
-                        return order;
-                    }
-                    if l.len() > 1 {
-                        Ordering::Greater
-                    } else {
-                        Ordering::Equal
-                    }
-                }
-            },
-            (Packet::List(l), Packet::List(r)) => {
-                for i in 0..l.len().min(r.len()) {
-                    let order = l[i].cmp(&r[i]);
-                    if !order.is_eq() {
-                        return order;
-                    }
-                }
-                l.len().cmp(&r.len())
-            },
-        }
+        compare(&self.0, &other.0).0
     }
 }
 
 impl Eq for Packet {}
 
-fn parse(line: &str) -> (Packet, &str) {
-    if let Some(mut line) = line.strip_prefix('[') {
-        let mut list = Vec::new();
+fn parse(mut line: &str) -> Packet {
+    let mut packet = Vec::new();
 
-        loop {
-            if let Some(rest) = line.strip_prefix(']') {
-                line = rest;
-                break;
-            }
-            let (inner, rest) = parse(line);
-            list.push(inner);
+    while !line.is_empty() {
+        if let Some(rest) = line.strip_prefix('[') {
+            packet.push(PacketToken::Open);
             line = rest;
-            if let Some(rest) = line.strip_prefix(',') {
-                line = rest;
-            }
+            continue;
         }
 
-        (Packet::List(list), line)
-    } else {
+        if let Some(rest) = line.strip_prefix(']') {
+            packet.push(PacketToken::Close);
+            line = rest;
+            continue;
+        }
+
+        if let Some(rest) = line.strip_prefix(',') {
+            line = rest;
+            continue;
+        }
+
         if let Some(end) = line.find(|c: char| !c.is_ascii_digit()) {
-            (Packet::Int(line[..end].parse().unwrap()), &line[end..])
+            packet.push(PacketToken::Int(line[..end].parse().unwrap()));
+            line = &line[end..];
         } else {
-            (Packet::Int(line.parse().unwrap()), "")
+            packet.push(PacketToken::Int(line.parse().unwrap()));
+            break;
         }
     }
+
+    Packet(packet)
 }
 
 pub fn solve(input: &str) -> (usize, usize) {
@@ -113,8 +159,8 @@ pub fn solve(input: &str) -> (usize, usize) {
 
         line_iter.next();
 
-        let left = parse(left).0;
-        let right = parse(right).0;
+        let left = parse(left);
+        let right = parse(right);
 
         if left < right {
             ordered_sum += pair_index;
