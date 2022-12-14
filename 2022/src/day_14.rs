@@ -3,10 +3,12 @@ use text_io::scan;
 
 fn draw_line(tiles: &mut HashSet<(u32, u32)>, a: (u32, u32), b: (u32, u32)) {
     if a.0 == b.0 {
+        tiles.reserve(a.1.abs_diff(b.1) as usize);
         for y in a.1.min(b.1)..=a.1.max(b.1) {
             tiles.insert((a.0, y));
         }
     } else if a.1 == b.1 {
+        tiles.reserve(a.0.abs_diff(b.0) as usize);
         for x in a.0.min(b.0)..=a.0.max(b.0) {
             tiles.insert((x, a.1));
         }
@@ -48,67 +50,37 @@ pub fn solve(input: &str) -> (usize, usize) {
         }
     }
 
-    let tiles_2 = tiles.clone();
-
-    let mut sound_count_1 = 0;
-
-    'outer: loop {
-        let mut sand = (500, 0);
-
-        loop {
-            if sand.1 > lowest_y {
-                break 'outer;
-            }
-
-            if !tiles.contains(&(sand.0, sand.1 + 1)) {
-                sand.1 += 1;
-                continue;
-            }
-
-            if !tiles.contains(&(sand.0 - 1, sand.1 + 1)) {
-                sand.0 -= 1;
-                sand.1 += 1;
-                continue;
-            }
-
-            if !tiles.contains(&(sand.0 + 1, sand.1 + 1)) {
-                sand.0 += 1;
-                sand.1 += 1;
-                continue;
-            }
-
-            tiles.insert(sand);
-            sound_count_1 += 1;
-            break;
-        }
-    }
-
-    let mut tiles = tiles_2;
-    let mut sound_count_2 = 0;
+    let initial_count = tiles.len();
+    let mut past_floor_count = 0;
 
     'outer: loop {
         let mut sand = (500, 0);
 
         loop {
-            if !tiles.contains(&(sand.0, sand.1 + 1)) && sand.1 <= lowest_y {
-                sand.1 += 1;
-                continue;
+            if past_floor_count == 0 && sand.1 > lowest_y {
+                past_floor_count = tiles.len() - initial_count;
             }
 
-            if !tiles.contains(&(sand.0 - 1, sand.1 + 1)) && sand.1 <= lowest_y {
-                sand.0 -= 1;
-                sand.1 += 1;
-                continue;
-            }
+            if sand.1 <= lowest_y {
+                if !tiles.contains(&(sand.0, sand.1 + 1)) {
+                    sand.1 += 1;
+                    continue;
+                }
 
-            if !tiles.contains(&(sand.0 + 1, sand.1 + 1)) && sand.1 <= lowest_y {
-                sand.0 += 1;
-                sand.1 += 1;
-                continue;
+                if !tiles.contains(&(sand.0 - 1, sand.1 + 1)) {
+                    sand.0 -= 1;
+                    sand.1 += 1;
+                    continue;
+                }
+
+                if !tiles.contains(&(sand.0 + 1, sand.1 + 1)) {
+                    sand.0 += 1;
+                    sand.1 += 1;
+                    continue;
+                }
             }
 
             tiles.insert(sand);
-            sound_count_2 += 1;
 
             if sand.0 == 500 && sand.1 == 0 {
                 break 'outer;
@@ -118,5 +90,16 @@ pub fn solve(input: &str) -> (usize, usize) {
         }
     }
 
-    (sound_count_1, sound_count_2)
+    (past_floor_count, tiles.len() - initial_count)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"498,4 -> 498,6 -> 496,6
+503,4 -> 502,4 -> 502,9 -> 494,9";
+    let output = solve(input);
+    assert_eq!(output.0, 24);
+    assert_eq!(output.1, 93);
 }
