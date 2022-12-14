@@ -48,7 +48,9 @@ pub fn solve(input: &str) -> (usize, usize) {
         }
     }
 
-    let mut sound_count = 0;
+    let tiles_2 = tiles.clone();
+
+    let mut sound_count_1 = 0;
 
     'outer: loop {
         let mut sand = (500, 0);
@@ -76,10 +78,45 @@ pub fn solve(input: &str) -> (usize, usize) {
             }
 
             tiles.insert(sand);
-            sound_count += 1;
+            sound_count_1 += 1;
             break;
         }
     }
 
-    (sound_count, 0)
+    let mut tiles = tiles_2;
+    let mut sound_count_2 = 0;
+
+    'outer: loop {
+        let mut sand = (500, 0);
+
+        loop {
+            if !tiles.contains(&(sand.0, sand.1 + 1)) && sand.1 <= lowest_y {
+                sand.1 += 1;
+                continue;
+            }
+
+            if !tiles.contains(&(sand.0 - 1, sand.1 + 1)) && sand.1 <= lowest_y {
+                sand.0 -= 1;
+                sand.1 += 1;
+                continue;
+            }
+
+            if !tiles.contains(&(sand.0 + 1, sand.1 + 1)) && sand.1 <= lowest_y {
+                sand.0 += 1;
+                sand.1 += 1;
+                continue;
+            }
+
+            tiles.insert(sand);
+            sound_count_2 += 1;
+
+            if sand.0 == 500 && sand.1 == 0 {
+                break 'outer;
+            }
+
+            break;
+        }
+    }
+
+    (sound_count_1, sound_count_2)
 }
