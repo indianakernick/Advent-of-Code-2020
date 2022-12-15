@@ -40,5 +40,30 @@ pub fn solve(input: &str) -> (usize, usize) {
         }
     }
 
-    (count, 0)
+    let mut tuning_freq: usize = 0;
+
+    'outer: for y in 0..=4000000 {
+        let mut x = 0;
+        while x <= 4000000 {
+            let mut within_sensor = false;
+            let mut new_x = x;
+
+            for (s, b) in sensors.iter() {
+                let range = manhattan(*s, *b);
+                if manhattan(*s, (x, y)) <= range {
+                    new_x = new_x.max(s.0 + (range - y.abs_diff(s.1)) as i32 + 1);
+                    within_sensor = true;
+                }
+            }
+
+            if !within_sensor {
+                tuning_freq = x as usize * 4000000 + y as usize;
+                break 'outer;
+            } else {
+                x = new_x;
+            }
+        }
+    }
+
+    (count, tuning_freq)
 }
