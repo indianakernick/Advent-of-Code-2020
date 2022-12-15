@@ -5,7 +5,8 @@ fn manhattan(a: (i32, i32), b: (i32, i32)) -> u32 {
 }
 
 fn solve_impl(input: &str, search_range: i32) -> (usize, usize) {
-    let mut sensors = Vec::<((i32, i32), (i32, i32))>::new();
+    let mut sensors = Vec::<((i32, i32), u32)>::new();
+    let mut beacons = Vec::<(i32, i32)>::new();
     let mut min_sensor_x = i32::MAX;
     let mut max_sensor_x = i32::MIN;
     let mut max_sensor_range = 0;
@@ -19,38 +20,42 @@ fn solve_impl(input: &str, search_range: i32) -> (usize, usize) {
 
         let s = (sx, sy);
         let b = (bx, by);
-        sensors.push((s, b));
+        let range = manhattan(s, b);
+
+        sensors.push((s, range));
+        if !beacons.contains(&b) {
+            beacons.push(b);
+        }
+
         min_sensor_x = min_sensor_x.min(sx);
         max_sensor_x = max_sensor_x.max(sx);
-        max_sensor_range = max_sensor_range.max(manhattan(s, b) as i32);
+        max_sensor_range = max_sensor_range.max(range as i32);
     }
 
     let mut covered_count = 0;
     let y = search_range / 2;
     let mut x = min_sensor_x - max_sensor_range;
-    let mut beacons = Vec::new();
 
     while x <= max_sensor_x + max_sensor_range {
         let mut within_sensor = None;
 
-        for (s, b) in sensors.iter() {
-            let range = manhattan(*s, *b);
-            if manhattan(*s, (x, y)) <= range {
+        for (s, range) in sensors.iter() {
+            if manhattan(*s, (x, y)) <= *range {
                 within_sensor = Some(s.0 + (range - y.abs_diff(s.1)) as i32 + 1);
                 break;
             }
         }
 
         if let Some(next_x) = within_sensor {
-            beacons.clear();
+            let mut beacon_count = 0;
 
-            for (_, b) in sensors.iter() {
-                if b.1 == y && x <= b.0 && b.0 < next_x && !beacons.contains(&b.0) {
-                    beacons.push(b.0);
+            for b in beacons.iter() {
+                if b.1 == y && x <= b.0 && b.0 < next_x {
+                    beacon_count += 1;
                 }
             }
 
-            covered_count += (next_x - x) as usize - beacons.len();
+            covered_count += (next_x - x) as usize - beacon_count;
             x = next_x;
         } else {
             x += 1;
@@ -63,9 +68,8 @@ fn solve_impl(input: &str, search_range: i32) -> (usize, usize) {
         let mut x = 0;
 
         'x: while x <= search_range {
-            for (s, b) in sensors.iter() {
-                let range = manhattan(*s, *b);
-                if manhattan(*s, (x, y)) <= range {
+            for (s, range) in sensors.iter() {
+                if manhattan(*s, (x, y)) <= *range {
                     x = s.0 + (range - y.abs_diff(s.1)) as i32 + 1;
                     continue 'x;
                 }
