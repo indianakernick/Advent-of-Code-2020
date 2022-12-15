@@ -66,14 +66,15 @@ fn solve_impl(input: &str, search_range: i32) -> (usize, usize) {
 
     let tuning_freq = std::thread::scope(|s| {
         let mut threads = Vec::new();
+        let sensors = &sensors;
+        let search_range = search_range + 1;
 
         for i in 0..thread_count {
-            let sensors = &sensors;
             threads.push(s.spawn(move || {
-                for y in (0..=search_range).skip(i).step_by(thread_count) {
+                for y in (i as i32..search_range).step_by(thread_count) {
                     let mut x = 0;
 
-                    'x: while x <= search_range {
+                    'x: while x < search_range {
                         for (s, range) in sensors.iter() {
                             if manhattan(*s, (x, y)) <= *range {
                                 x = s.0 + (range - y.abs_diff(s.1)) as i32 + 1;
