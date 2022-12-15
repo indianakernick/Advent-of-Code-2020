@@ -62,23 +62,41 @@ fn solve_impl(input: &str, search_range: i32) -> (usize, usize) {
         }
     }
 
-    let mut tuning_freq = 0;
+    let thread_count = std::thread::available_parallelism().unwrap().get();
 
-    'y: for y in 0..=search_range {
-        let mut x = 0;
+    let tuning_freq = std::thread::scope(|s| {
+        let mut threads = Vec::new();
 
-        'x: while x <= search_range {
-            for (s, range) in sensors.iter() {
-                if manhattan(*s, (x, y)) <= *range {
-                    x = s.0 + (range - y.abs_diff(s.1)) as i32 + 1;
-                    continue 'x;
+        for i in 0..thread_count {
+            let sensors = &sensors;
+            threads.push(s.spawn(move || {
+                for y in (0..=search_range).skip(i).step_by(thread_count) {
+                    let mut x = 0;
+
+                    'x: while x <= search_range {
+                        for (s, range) in sensors.iter() {
+                            if manhattan(*s, (x, y)) <= *range {
+                                x = s.0 + (range - y.abs_diff(s.1)) as i32 + 1;
+                                continue 'x;
+                            }
+                        }
+
+                        return Some(x as usize * 4000000 + y as usize);
+                    }
                 }
-            }
 
-            tuning_freq = x as usize * 4000000 + y as usize;
-            break 'y;
+                None
+            }));
         }
-    }
+
+        for thread in threads.into_iter() {
+            if let Some(res) = thread.join().unwrap() {
+                return res;
+            }
+        }
+
+        0
+    });
 
     (covered_count, tuning_freq)
 }
