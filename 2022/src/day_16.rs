@@ -17,7 +17,7 @@ fn get_short_long_map(valves: &[(u32, Vec<usize>)], start: usize) -> (Vec<usize>
     (short_to_long, long_to_short)
 }
 
-const UNREACHABLE: u32 = 64; // u16::MAX as u32;
+const UNREACHABLE: u32 = u16::MAX as u32;
 
 fn get_distances(valves: &[(u32, Vec<usize>)]) -> Vec<Vec<u32>> {
     let mut distance = Vec::<Vec<u32>>::new();
@@ -95,9 +95,9 @@ fn search_inner(
 
     let bit = 1 << current_short;
 
-    let result = if remaining >= 2 && (enabled & bit) == 0 {
+    let result = if remaining >= 2 && (enabled & bit) != 0 {
         let remaining = remaining - 1;
-        let enabled = enabled | bit;
+        let enabled = enabled & !bit;
 
         let current_score = valves[current_long].0 * remaining;
         let next_score = search_inner(
@@ -120,7 +120,7 @@ fn search_inner(
     result
 }
 
-fn search(valves: &[(u32, Vec<usize>)], start: usize) -> u32 {
+fn search(valves: &[(u32, Vec<usize>)], start: usize) -> (u32, u32) {
     let (short_to_long, long_to_short) = get_short_long_map(valves, start);
     let distances = get_distances(valves);
 
@@ -133,14 +133,31 @@ fn search(valves: &[(u32, Vec<usize>)], start: usize) -> u32 {
         v
     });
 
-    search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 30, 0)
+    let part_1 = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 30, (1 << short_to_long.len()) - 2);
+
+    let short_len = short_to_long.len();
+    let mut part_2 = 0;
+
+    for enabled in (0..1 << short_len).step_by(2) {
+        for enabled_count in 2..short_len + 1 {
+            let count_mask = ((1 << enabled_count) - 1) & !1;
+            let me_enabled = enabled & count_mask;
+            let el_enabled = !enabled & count_mask;
+            let me_score = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 26, me_enabled);
+            let el_score = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 26, el_enabled);
+
+            part_2 = part_2.max(me_score + el_score);
+        }
+    }
+
+    (part_1, part_2)
 }
 
 fn to_id(s: [u8; 2]) -> u16 {
     ((s[0] as u16) << 8) | s[1] as u16
 }
 
-pub fn solve(input: &str) -> (u32, usize) {
+pub fn solve(input: &str) -> (u32, u32) {
     let mut valves = Vec::<(u16, u32, Vec<u16>)>::new();
 
     for line in input.lines() {
@@ -177,5 +194,5 @@ pub fn solve(input: &str) -> (u32, usize) {
 
     let start = valves.iter().position(|v| v.0 == to_id([b'A', b'A'])).unwrap();
 
-    (search(&new_valves, start), 0)
+    search(&new_valves, start)
 }
