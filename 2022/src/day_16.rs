@@ -1,6 +1,11 @@
 use text_io::scan;
 
-fn get_short_long_map(valves: &[(u32, Vec<usize>)], start: usize) -> (Vec<usize>, Vec<usize>) {
+// We're keeping a short list of valves. The important valves are the ones with
+// a positive flow rate and of course the starting valve.
+fn get_short_long_map(
+    valves: &[(u32, Vec<usize>)],
+    start: usize,
+) -> (Vec<usize>, Vec<usize>) {
     let mut short_to_long = Vec::new();
     let mut long_to_short = vec![usize::MAX; valves.len()];
 
@@ -19,104 +24,115 @@ fn get_short_long_map(valves: &[(u32, Vec<usize>)], start: usize) -> (Vec<usize>
 
 const UNREACHABLE: u32 = u16::MAX as u32;
 
+// Precomputing the distances between every pair of short valve.
 fn get_distances(valves: &[(u32, Vec<usize>)]) -> Vec<Vec<u32>> {
-    let mut distance = Vec::<Vec<u32>>::new();
-    distance.resize_with(valves.len(), || vec![UNREACHABLE; valves.len()]);
+    let mut dist = Vec::<Vec<u32>>::new();
+    dist.resize_with(valves.len(), || vec![UNREACHABLE; valves.len()]);
 
     for (i, valve) in valves.iter().enumerate() {
         for neighbor in valve.1.iter() {
-            distance[i][*neighbor] = 1;
-            distance[*neighbor][i] = 1;
+            dist[i][*neighbor] = 1;
+            dist[*neighbor][i] = 1;
         }
     }
 
-    // Floyd-Warshall
-    for i in 0..distance.len() {
-        for j in 0..distance.len() {
-            for k in 0..distance.len() {
-                distance[j][k] = distance[j][k].min(distance[j][i] + distance[i][k]);
+    // Floyd-Warshall with some tricks to make it perform well in Rust.
+    // https://stackoverflow.com/a/70059224/4093378
+    let n = dist.len();
+    for i in 0..n {
+        for j in 0..n {
+            if i == j {
+                continue;
+            }
+            let (dist_j, dist_i) = if j < i {
+                let (lo, hi) = dist.split_at_mut(i);
+                (&mut lo[j][..n], &mut hi[0][..n])
+            } else {
+                let (lo, hi) = dist.split_at_mut(j);
+                (&mut hi[0][..n], &mut lo[i][..n])
+            };
+            let dist_ji = dist_j[i];
+            for k in 0..n {
+                dist_j[k] = dist_j[k].min(dist_ji + dist_i[k]);
             }
         }
     }
 
-    distance
+    dist
 }
 
-
 fn search_inner(
-    table: &mut Vec<Vec<Vec<u32>>>,
+    memoize_table: &mut Vec<Vec<Vec<u32>>>,
     valves: &[(u32, Vec<usize>)],
     short_to_long: &[usize],
     long_to_short: &[usize],
     distances: &[Vec<u32>],
     current_long: usize,
     remaining: u32,
-    enabled: u64,
+    available: u64,
 ) -> u32 {
     if remaining == 0 {
         return 0;
     }
 
     let current_short = long_to_short[current_long];
-    let memoized = table[remaining as usize][current_short][enabled as usize];
+    let memoized = memoize_table[remaining as usize][current_short][available as usize];
 
     if memoized != u32::MAX {
         return memoized;
     }
 
-    // Maximum score from visiting neighbors if we decide not to enable the
-    // current valve.
-    let mut skip_neighbor_score = 0;
+    // At each point, we can either visit another valve or open the current
+    // valve.
 
-    for neighbor_long in short_to_long.iter() {
-        // Checking if neighbor has a positive flow rate
-        if valves[*neighbor_long].0 == 0 { continue }
+    let mut score = 0;
+
+    // Skipping the first one because it's the starting valve and that doesn't
+    // have a positive flow rate.
+    for neighbor_long in short_to_long.iter().skip(1) {
+        if *neighbor_long == current_long { continue }
         // Checking if we'll reach that neighbor with enough time to turn on the
         // valve and then let it flow.
         let neighbor_distance = distances[current_long][*neighbor_long];
         if neighbor_distance + 1 >= remaining { continue }
 
-        skip_neighbor_score = skip_neighbor_score.max(search_inner(
-            table,
+        score = score.max(search_inner(
+            memoize_table,
             valves,
             short_to_long,
             long_to_short,
             distances,
             *neighbor_long,
             remaining - neighbor_distance,
-            enabled,
+            available,
         ));
-    }
-
-    if current_short == 0 || current_short == usize::MAX {
-        table[remaining as usize][current_short][enabled as usize] = skip_neighbor_score;
-        return skip_neighbor_score;
     }
 
     let bit = 1 << current_short;
 
-    let result = if remaining >= 2 && (enabled & bit) != 0 {
+    // Opening the current valve if we can.
+    let result = if remaining >= 2 && (available & bit) != 0 {
         let remaining = remaining - 1;
-        let enabled = enabled & !bit;
+        let available = available & !bit;
 
         let current_score = valves[current_long].0 * remaining;
         let next_score = search_inner(
-            table,
+            memoize_table,
             valves,
             short_to_long,
             long_to_short,
             distances,
             current_long,
             remaining,
-            enabled,
+            available,
         );
 
-        skip_neighbor_score.max(current_score + next_score)
+        score.max(current_score + next_score)
     } else {
-        skip_neighbor_score
+        score
     };
 
-    table[remaining as usize][current_short][enabled as usize] = result;
+    memoize_table[remaining as usize][current_short][available as usize] = result;
     result
 }
 
@@ -124,27 +140,55 @@ fn search(valves: &[(u32, Vec<usize>)], start: usize) -> (u32, u32) {
     let (short_to_long, long_to_short) = get_short_long_map(valves, start);
     let distances = get_distances(valves);
 
-    // [remaining][position][enabled]
-    let mut table = Vec::<Vec<Vec<u32>>>::new();
+    // [remaining][position][available]
+    let mut memoize_table = Vec::<Vec<Vec<u32>>>::new();
 
-    table.resize_with(31, || {
+    memoize_table.resize_with(31, || {
         let mut v = Vec::new();
         v.resize_with(valves.len(), || vec![u32::MAX; 1 << short_to_long.len()]);
         v
     });
 
-    let part_1 = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 30, (1 << short_to_long.len()) - 2);
+    let part_1 = search_inner(
+        &mut memoize_table,
+        valves,
+        &short_to_long,
+        &long_to_short,
+        &distances,
+        start,
+        30,
+        (1 << short_to_long.len()) - 2
+    );
 
     let short_len = short_to_long.len();
     let mut part_2 = 0;
 
+    // Iterating over two disjoint sets of valves to open.
     for enabled in (0..1 << short_len).step_by(2) {
         for enabled_count in 2..short_len + 1 {
             let count_mask = ((1 << enabled_count) - 1) & !1;
             let me_enabled = enabled & count_mask;
             let el_enabled = !enabled & count_mask;
-            let me_score = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 26, me_enabled);
-            let el_score = search_inner(&mut table, valves, &short_to_long, &long_to_short, &distances, start, 26, el_enabled);
+            let me_score = search_inner(
+                &mut memoize_table,
+                valves,
+                &short_to_long,
+                &long_to_short,
+                &distances,
+                start,
+                26,
+                me_enabled
+            );
+            let el_score = search_inner(
+                &mut memoize_table,
+                valves,
+                &short_to_long,
+                &long_to_short,
+                &distances,
+                start,
+                26,
+                el_enabled
+            );
 
             part_2 = part_2.max(me_score + el_score);
         }
@@ -166,6 +210,8 @@ pub fn solve(input: &str) -> (u32, u32) {
         let flow_rate: u32;
         scan!(line_bytes => "Valve {} has flow rate={}; tunnel", current, flow_rate);
 
+        // At this point I realised that maybe regex would be better than this
+        // text_io library.
         let mut line_bytes = line_bytes.skip_while(|ch| *ch == b' ' || ch.is_ascii_lowercase());
         let mut next = Vec::<u16>::new();
 
@@ -181,6 +227,7 @@ pub fn solve(input: &str) -> (u32, u32) {
         valves.push((to_id([current[0], current[1]]), flow_rate, next));
     }
 
+    // Mapping from IDs to indices
     let new_valves = valves.iter()
         .map(|valve| {
             let indices = valve.2.iter()
@@ -195,4 +242,23 @@ pub fn solve(input: &str) -> (u32, u32) {
     let start = valves.iter().position(|v| v.0 == to_id([b'A', b'A'])).unwrap();
 
     search(&new_valves, start)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"Valve AA has flow rate=0; tunnels lead to valves DD, II, BB
+Valve BB has flow rate=13; tunnels lead to valves CC, AA
+Valve CC has flow rate=2; tunnels lead to valves DD, BB
+Valve DD has flow rate=20; tunnels lead to valves CC, AA, EE
+Valve EE has flow rate=3; tunnels lead to valves FF, DD
+Valve FF has flow rate=0; tunnels lead to valves EE, GG
+Valve GG has flow rate=0; tunnels lead to valves FF, HH
+Valve HH has flow rate=22; tunnel leads to valve GG
+Valve II has flow rate=0; tunnels lead to valves AA, JJ
+Valve JJ has flow rate=21; tunnel leads to valve II";
+    let output = solve(input);
+    assert_eq!(output.0, 1651);
+    assert_eq!(output.1, 1707);
 }
