@@ -27,6 +27,7 @@ const ROCKS: [&[u8]; 5] = [
         0b00110000,
     ],
 ];
+const MAX_ROCK_HEIGHT: usize = 4;
 
 // The state of the simulation.
 #[derive(PartialEq, Eq, Hash)]
@@ -44,7 +45,8 @@ struct Position {
 
 fn solve_impl(input: &str, iter_count: usize) -> usize {
     // The chamber of rocks, from bottom to top, which reach row represented as
-    // a 7-bit bitset.
+    // a 7-bit bitset. Using a deque so that we can efficiently add to the end
+    // and remove from the beginning.
     let mut chamber = VecDeque::<u8>::new();
     // The number of rows that we've trimmed off of the chamber. If a row is
     // has all 7 tiles filled, then there's no point in storing anything below
@@ -54,7 +56,7 @@ fn solve_impl(input: &str, iter_count: usize) -> usize {
     // Index within the ROCKS array of the current rock shape.
     let mut falling_rock_idx = 0;
     // A copy of one of the ROCKS, possibly shifted left or right.
-    let mut falling_rock = Vec::<u8>::new();
+    let mut falling_rock: [u8; MAX_ROCK_HEIGHT] = Default::default();
     // Vertical position of the falling rock. Positive is up.
     let mut falling_rock_y;
 
@@ -76,8 +78,9 @@ fn solve_impl(input: &str, iter_count: usize) -> usize {
     let mut iter = 0;
 
     while iter < iter_count {
-        falling_rock.clear();
-        falling_rock.extend_from_slice(ROCKS[falling_rock_idx]);
+        falling_rock.fill(0);
+        let falling_rock_size = ROCKS[falling_rock_idx].len();
+        falling_rock[0..falling_rock_size].copy_from_slice(ROCKS[falling_rock_idx]);
 
         // Search for a filled row.
         let unused_size = chamber.iter()
@@ -121,42 +124,43 @@ fn solve_impl(input: &str, iter_count: usize) -> usize {
             let dir = jet[jet_idx];
             jet_idx = (jet_idx + 1) % jet.len();
 
+            // The height of the tallest rock is 4 so we can pack it into a
+            // single integer and operate on all rows at once. Although the
+            // chamber is a circular array so this has limited utility but still
+            // makes a significant difference to running time (from about 670us
+            // to 570us).
+            let falling_rock_int = u32::from_ne_bytes(falling_rock);
+
             // Shift the falling rock left or right according to the current jet
-            // direction.
+            // direction. This is a bit repetitive...
             match dir {
                 b'<' => 'collision: {
-                    for (y, row) in falling_rock.iter().enumerate() {
-                        if row.leading_zeros() == 0 {
-                            // Colliding with the left wall.
-                            break 'collision;
-                        }
+                    if (falling_rock_int & 0b10000000100000001000000010000000) != 0 {
+                        // Colliding with the left wall.
+                        break 'collision;
+                    }
+                    for (y, row) in falling_rock.iter().take(falling_rock_size).enumerate() {
                         let i = falling_rock_y + y;
                         if i < chamber.len() && ((row << 1) & chamber[i]) != 0 {
                             // Colliding with another rock.
                             break 'collision;
                         }
                     }
-                    for row in falling_rock.iter_mut() {
-                        *row <<= 1;
-                    }
+                    falling_rock = (falling_rock_int << 1).to_ne_bytes();
                 }
                 b'>' => 'collision: {
-                    for (y, row) in falling_rock.iter().enumerate() {
-                        // A row is a u8 but we're using the left (most
-                        // significant) 7 bits of it.
-                        if row.trailing_zeros() == 1 {
-                            // Colliding with the right wall.
-                            break 'collision;
-                        }
+                    if (falling_rock_int & 0b00000010000000100000001000000010) != 0 {
+                        // Colliding with the right wall.
+                        break 'collision;
+                    }
+                    for (y, row) in falling_rock.iter().take(falling_rock_size).enumerate() {
                         let i = falling_rock_y + y;
                         if i < chamber.len() && ((row >> 1) & chamber[i]) != 0 {
                             // Colliding with another rock.
                             break 'collision;
                         }
                     }
-                    for row in falling_rock.iter_mut() {
-                        *row >>= 1;
-                    }
+                    falling_rock = (falling_rock_int >> 1).to_ne_bytes();
                 }
                 _ => {}
             }
@@ -166,7 +170,7 @@ fn solve_impl(input: &str, iter_count: usize) -> usize {
                 break;
             }
 
-            for (y, row) in falling_rock.iter().enumerate() {
+            for (y, row) in falling_rock.iter().take(falling_rock_size).enumerate() {
                 let i = falling_rock_y + y - 1;
                 if i < chamber.len() && (row & chamber[i]) != 0 {
                     // Colliding with another row. Stop falling.
@@ -178,11 +182,11 @@ fn solve_impl(input: &str, iter_count: usize) -> usize {
         }
 
         // The rock is coming to rest. We can stamp it into the chamber.
-        let min_size = falling_rock_y + falling_rock.len();
+        let min_size = falling_rock_y + falling_rock_size;
         if chamber.len() < min_size {
             chamber.resize(min_size, 0);
         }
-        for (y, row) in falling_rock.iter().enumerate() {
+        for (y, row) in falling_rock.iter().take(falling_rock_size).enumerate() {
             chamber[falling_rock_y + y] |= row;
         }
 
