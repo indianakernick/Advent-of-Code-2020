@@ -14,11 +14,12 @@ mod day_13;
 mod day_14;
 mod day_15;
 mod day_16;
+mod day_17;
 
 use clap::Parser;
 use std::fmt::Display;
 
-const DAY_COUNT: u8 = 16;
+const DAY_COUNT: u8 = 17;
 
 #[derive(Parser)]
 struct Cli {
@@ -59,6 +60,7 @@ fn solve_and_print(day: u8) {
        14 => print_output(day_14::solve(include_str!("../input/day_14.txt"))),
        15 => print_output(day_15::solve(include_str!("../input/day_15.txt"))),
        16 => print_output(day_16::solve(include_str!("../input/day_16.txt"))),
+       17 => print_output(day_17::solve(include_str!("../input/day_17.txt"))),
        _ => unreachable!(),
    }
 }
