@@ -1,131 +1,175 @@
 use std::collections::{VecDeque, HashMap};
 
-const ROCK_0: [u8; 1] = [0b00111100];
-const ROCK_1: [u8; 3] = [
-    0b00010000,
-    0b00111000,
-    0b00010000,
+// The rock shapes. They're offset from the left by 2. Also note that they're
+// upside-down. Increasing index is upwards.
+const ROCKS: [&[u8]; 5] = [
+    &[
+        0b00111100
+    ],
+    &[
+        0b00010000,
+        0b00111000,
+        0b00010000,
+    ],
+    &[
+        0b00111000,
+        0b00001000,
+        0b00001000,
+    ],
+    &[
+        0b00100000,
+        0b00100000,
+        0b00100000,
+        0b00100000,
+    ],
+    &[
+        0b00110000,
+        0b00110000,
+    ],
 ];
-const ROCK_2: [u8; 3] = [
-    0b00111000,
-    0b00001000,
-    0b00001000,
-];
-const ROCK_3: [u8; 4] = [
-    0b00100000,
-    0b00100000,
-    0b00100000,
-    0b00100000,
-];
-const ROCK_4: [u8; 2] = [
-    0b00110000,
-    0b00110000,
-];
-const ROCKS: [&[u8]; 5] = [&ROCK_0, &ROCK_1, &ROCK_2, &ROCK_3, &ROCK_4];
 
-fn get_height(chamber: &VecDeque<u8>) -> usize {
-    chamber.iter().rposition(|row| *row != 0).map(|i| i + 1).unwrap_or(0)
+// The state of the simulation.
+#[derive(PartialEq, Eq, Hash)]
+struct State {
+    chamber: VecDeque<u8>,
+    falling_rock_idx: usize,
+    jet_idx: usize,
 }
 
-fn solve_impl(input: &str, count: usize) -> usize {
-    // positive is up
+// The position of the simulation at a particular state.
+struct Position {
+    iter: usize,
+    trim_size: usize,
+}
+
+fn solve_impl(input: &str, iter_count: usize) -> usize {
+    // The chamber of rocks, from bottom to top, which reach row represented as
+    // a 7-bit bitset.
     let mut chamber = VecDeque::<u8>::new();
+    // The number of rows that we've trimmed off of the chamber. If a row is
+    // has all 7 tiles filled, then there's no point in storing anything below
+    // that.
     let mut trim_size = 0;
+
+    // Index within the ROCKS array of the current rock shape.
     let mut falling_rock_idx = 0;
+    // A copy of one of the ROCKS, possibly shifted left or right.
     let mut falling_rock = Vec::<u8>::new();
+    // Vertical position of the falling rock. Positive is up.
     let mut falling_rock_y;
+
+    // The jet directions. The input file ends with a newline so we're trimming
+    // that off.
+    let jet = &input.as_bytes()[0..input.bytes()
+        .rposition(|b| b == b'<' || b == b'>')
+        .unwrap() + 1];
+    // The current index in the jet direction array.
     let mut jet_idx = 0;
-    let jet = &input.as_bytes()[0..input.bytes().rposition(|b| b == b'<' || b == b'>').unwrap() + 1];
 
-    let mut chambers = HashMap::<(VecDeque<u8>, usize, usize), (usize, usize)>::new();
-    let mut r = 0;
+    // A cache of positions at previous states. If we find
+    let mut cache = HashMap::<State, Position>::new();
+    // Whether we've found a cycle and skipped over it. Once we're close to the
+    // end, we don't want to keep checking the cache to find cycles. We're
+    // unlikely to find any in the little remaining space anyway.
     let mut found_cycle = false;
+    // The current iteration index.
+    let mut iter = 0;
 
-    while r < count {
+    while iter < iter_count {
         falling_rock.clear();
         falling_rock.extend_from_slice(ROCKS[falling_rock_idx]);
 
-        let unused_size = chamber.iter().rposition(|row| *row == 0b11111110).map(|i| i + 1);
+        // Search for a filled row.
+        let unused_size = chamber.iter()
+            .rposition(|row| *row == 0b11111110)
+            .map(|i| i + 1);
+
         if let Some(unused_size) = unused_size {
+            // The filled row and all rows below it are removed.
             trim_size += unused_size;
             chamber.drain(0..unused_size);
-            let base_size = get_height(&chamber);
 
-            chamber.truncate(base_size);
-            let insert = chambers.insert((chamber.clone(), falling_rock_idx, jet_idx), (r, trim_size));
-            if !found_cycle && insert.is_some() {
-                // We've been in this state before. Repeat the cycle until we're
-                // near the end.
-                found_cycle = true;
-                let (start, start_trim) = insert.unwrap();
-                let cycle_size = r - start;
-                let cycles = (count - r) / cycle_size;
-                r += cycle_size * cycles;
-                trim_size += (trim_size - start_trim) * cycles;
+            if !found_cycle {
+                // Search the cache to check if we've been in this state before.
+                // Note that we have to clone the chamber but this clone is only
+                // useless once (when we find the cycle).
+                let old_position = cache.insert(
+                    State { chamber: chamber.clone(), falling_rock_idx, jet_idx },
+                    Position { iter, trim_size }
+                );
+                if let Some(old_position) = old_position {
+                    // We've been in this state before. There is a cycle between
+                    // the old_position and our current position. We can do some
+                    // multiplication on our position to get as close as
+                    // possible to the iter_count without actually simulating
+                    // all of that.
+                    found_cycle = true;
+                    let cycle_iters = iter - old_position.iter;
+                    let cycle_count = (iter_count - iter) / cycle_iters;
+                    iter += cycle_iters * cycle_count;
+                    trim_size += (trim_size - old_position.trim_size) * cycle_count;
+                }
             }
         }
 
-        let base_size = get_height(&chamber);
-        falling_rock_y = base_size + 3;
-        let new_size = falling_rock_y + falling_rock.len();
-        chamber.resize(new_size, 0);
+        // The falling rock starts 3 rows above the tower height.
+        falling_rock_y = chamber.len() + 3;
 
+        // This inner loop processes the fall of a single rock down to its
+        // resting position.
         'fall: loop {
             let dir = jet[jet_idx];
             jet_idx = (jet_idx + 1) % jet.len();
 
+            // Shift the falling rock left or right according to the current jet
+            // direction.
             match dir {
-                b'<' => {
-                    let mut collide = false;
+                b'<' => 'collision: {
                     for (y, row) in falling_rock.iter().enumerate() {
                         if row.leading_zeros() == 0 {
-                            // hitting left wall
-                            collide = true;
-                            break;
+                            // Colliding with the left wall.
+                            break 'collision;
                         }
-                        if ((row << 1) & chamber[falling_rock_y + y]) != 0 {
-                            // hitting another rock
-                            collide = true;
-                            break;
+                        let i = falling_rock_y + y;
+                        if i < chamber.len() && ((row << 1) & chamber[i]) != 0 {
+                            // Colliding with another rock.
+                            break 'collision;
                         }
                     }
-                    if !collide {
-                        for row in falling_rock.iter_mut() {
-                            *row <<= 1;
-                        }
+                    for row in falling_rock.iter_mut() {
+                        *row <<= 1;
                     }
                 }
-                b'>' => {
-                    let mut collide = false;
+                b'>' => 'collision: {
                     for (y, row) in falling_rock.iter().enumerate() {
+                        // A row is a u8 but we're using the left (most
+                        // significant) 7 bits of it.
                         if row.trailing_zeros() == 1 {
-                            // hitting right wall
-                            collide = true;
-                            break;
+                            // Colliding with the right wall.
+                            break 'collision;
                         }
-                        if ((row >> 1) & chamber[falling_rock_y + y]) != 0 {
-                            // hitting another rock
-                            collide = true;
-                            break;
+                        let i = falling_rock_y + y;
+                        if i < chamber.len() && ((row >> 1) & chamber[i]) != 0 {
+                            // Colliding with another rock.
+                            break 'collision;
                         }
                     }
-                    if !collide {
-                        for row in falling_rock.iter_mut() {
-                            *row >>= 1;
-                        }
+                    for row in falling_rock.iter_mut() {
+                        *row >>= 1;
                     }
                 }
                 _ => {}
             }
 
             if falling_rock_y == 0 {
-                // hit the floor. stop falling
+                // The rock has hit the floor. Stop falling.
                 break;
             }
 
             for (y, row) in falling_rock.iter().enumerate() {
-                if (row & chamber[falling_rock_y + y - 1]) != 0 {
-                    // hitting another rock. stop falling
+                let i = falling_rock_y + y - 1;
+                if i < chamber.len() && (row & chamber[i]) != 0 {
+                    // Colliding with another row. Stop falling.
                     break 'fall;
                 }
             }
@@ -133,16 +177,20 @@ fn solve_impl(input: &str, count: usize) -> usize {
             falling_rock_y -= 1;
         }
 
-        // coming to rest
+        // The rock is coming to rest. We can stamp it into the chamber.
+        let min_size = falling_rock_y + falling_rock.len();
+        if chamber.len() < min_size {
+            chamber.resize(min_size, 0);
+        }
         for (y, row) in falling_rock.iter().enumerate() {
             chamber[falling_rock_y + y] |= row;
         }
 
         falling_rock_idx = (falling_rock_idx + 1) % ROCKS.len();
-        r += 1;
+        iter += 1;
     }
 
-    trim_size + get_height(&chamber)
+    trim_size + chamber.len()
 }
 
 pub fn solve(input: &str) -> (usize, usize) {
