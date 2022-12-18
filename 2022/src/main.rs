@@ -1,26 +1,53 @@
-mod day_01;
-mod day_02;
-mod day_03;
-mod day_04;
-mod day_05;
-mod day_06;
-mod day_07;
-mod day_08;
-mod day_09;
-mod day_10;
-mod day_11;
-mod day_12;
-mod day_13;
-mod day_14;
-mod day_15;
-mod day_16;
-mod day_17;
-mod day_18;
+macro_rules! declare_days {
+    ($($day:ident)+) => {
+        $(mod $day;)+
+
+        declare_days!(@solve 0u8, $($day)+,);
+    };
+
+    (@solve $index:expr, $first:ident $($rest:ident)*, $(($res_index:expr, $res_ident:ident))*) => {
+        declare_days!(@solve $index + 1u8, $($rest)*, ($index + 1u8, $first) $(($res_index, $res_ident))*);
+    };
+
+    (@solve $index:expr, , $(($res_index:expr, $res_ident:ident))*) => {
+        const DAY_COUNT: u8 = $index;
+
+        fn solve_and_print(day: u8) {
+            match day {
+                $(
+                    i if i == $res_index => print_output($res_ident::solve(
+                        include_str!(concat!("../input/", stringify!($res_ident), ".txt"))
+                    )),
+                )+
+                _ => unreachable!(),
+            }
+        }
+    };
+}
+
+declare_days!(
+    day_01
+    day_02
+    day_03
+    day_04
+    day_05
+    day_06
+    day_07
+    day_08
+    day_09
+    day_10
+    day_11
+    day_12
+    day_13
+    day_14
+    day_15
+    day_16
+    day_17
+    day_18
+);
 
 use clap::Parser;
 use std::fmt::Display;
-
-const DAY_COUNT: u8 = 18;
 
 #[derive(Parser)]
 struct Cli {
@@ -41,30 +68,6 @@ fn print_part(num: u8, mut output: String) {
 fn print_output<P1: Display, P2: Display>(output: (P1, P2)) {
     print_part(1, output.0.to_string());
     print_part(2, output.1.to_string());
-}
-
-fn solve_and_print(day: u8) {
-    match day {
-        1 => print_output(day_01::solve(include_str!("../input/day_01.txt"))),
-        2 => print_output(day_02::solve(include_str!("../input/day_02.txt"))),
-        3 => print_output(day_03::solve(include_str!("../input/day_03.txt"))),
-        4 => print_output(day_04::solve(include_str!("../input/day_04.txt"))),
-        5 => print_output(day_05::solve(include_str!("../input/day_05.txt"))),
-        6 => print_output(day_06::solve(include_str!("../input/day_06.txt"))),
-        7 => print_output(day_07::solve(include_str!("../input/day_07.txt"))),
-        8 => print_output(day_08::solve(include_str!("../input/day_08.txt"))),
-        9 => print_output(day_09::solve(include_str!("../input/day_09.txt"))),
-       10 => print_output(day_10::solve(include_str!("../input/day_10.txt"))),
-       11 => print_output(day_11::solve(include_str!("../input/day_11.txt"))),
-       12 => print_output(day_12::solve(include_str!("../input/day_12.txt"))),
-       13 => print_output(day_13::solve(include_str!("../input/day_13.txt"))),
-       14 => print_output(day_14::solve(include_str!("../input/day_14.txt"))),
-       15 => print_output(day_15::solve(include_str!("../input/day_15.txt"))),
-       16 => print_output(day_16::solve(include_str!("../input/day_16.txt"))),
-       17 => print_output(day_17::solve(include_str!("../input/day_17.txt"))),
-       18 => print_output(day_18::solve(include_str!("../input/day_18.txt"))),
-       _ => unreachable!(),
-   }
 }
 
 fn main() {
