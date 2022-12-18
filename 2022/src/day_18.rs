@@ -1,97 +1,101 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use text_io::scan;
 
 type Coord = i8;
 type Coord3 = (Coord, Coord, Coord);
 
 fn touch_or_visit(
-    lava: &mut HashMap<Coord3, u8>,
+    lava: &mut HashSet<Coord3>,
     visited: &mut HashSet<Coord3>,
     minimum: Coord3,
     maximum: Coord3,
     next: Coord3,
-) {
-    if let Some(count) = lava.get_mut(&next) {
-        *count += 1;
+) -> u32 {
+    if lava.contains(&next) {
+        1
     } else {
-        flood_fill(lava, visited, minimum, maximum, next);
+        flood_fill(lava, visited, minimum, maximum, next)
     }
 }
 
 fn flood_fill(
-    lava: &mut HashMap<Coord3, u8>,
+    lava: &mut HashSet<Coord3>,
     visited: &mut HashSet<Coord3>,
     minimum: Coord3,
     maximum: Coord3,
     current: Coord3,
-) {
+) -> u32 {
     if !visited.insert(current) {
-        return;
+        return 0;
     }
+
+    let mut count = 0;
 
     if current.0 > minimum.0 {
         let next = (current.0 - 1, current.1, current.2);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
 
     if current.0 < maximum.0 {
         let next = (current.0 + 1, current.1, current.2);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
 
     if current.1 > minimum.1 {
         let next = (current.0, current.1 - 1, current.2);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
 
     if current.1 < maximum.1 {
         let next = (current.0, current.1 + 1, current.2);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
 
     if current.2 > minimum.2 {
         let next = (current.0, current.1, current.2 - 1);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
 
     if current.2 < maximum.2 {
         let next = (current.0, current.1, current.2 + 1);
-        touch_or_visit(lava, visited, minimum, maximum, next);
+        count += touch_or_visit(lava, visited, minimum, maximum, next);
     }
+
+    count
 }
 
-pub fn solve(input: &str) -> (usize, usize) {
-    let mut lava = HashMap::<Coord3, u8>::with_capacity(input.len() / 8);
+pub fn solve(input: &str) -> (u32, u32) {
+    let mut lava = HashSet::<Coord3>::with_capacity(input.len() / 8);
 
     for line in input.lines() {
         let x: Coord;
         let y: Coord;
         let z: Coord;
         scan!(line.bytes() => "{},{},{}", x, y, z);
-        lava.insert((x, y, z), 0);
+        lava.insert((x, y, z));
     }
 
     let mut interior_exposed = 0;
     let mut minimum = (Coord::MAX, Coord::MAX, Coord::MAX);
     let mut maximum = (Coord::MIN, Coord::MIN, Coord::MIN);
 
-    for pos in lava.keys() {
-        if !lava.contains_key(&(pos.0 - 1, pos.1, pos.2)) {
+    for pos in lava.iter() {
+        if !lava.contains(&(pos.0 - 1, pos.1, pos.2)) {
             interior_exposed += 1;
         }
-        if !lava.contains_key(&(pos.0 + 1, pos.1, pos.2)) {
+        if !lava.contains(&(pos.0 + 1, pos.1, pos.2)) {
             interior_exposed += 1;
         }
-        if !lava.contains_key(&(pos.0, pos.1 - 1, pos.2)) {
+        if !lava.contains(&(pos.0, pos.1 - 1, pos.2)) {
             interior_exposed += 1;
         }
-        if !lava.contains_key(&(pos.0, pos.1 + 1, pos.2)) {
+        if !lava.contains(&(pos.0, pos.1 + 1, pos.2)) {
             interior_exposed += 1;
         }
-        if !lava.contains_key(&(pos.0, pos.1, pos.2 - 1)) {
+        if !lava.contains(&(pos.0, pos.1, pos.2 - 1)) {
             interior_exposed += 1;
         }
-        if !lava.contains_key(&(pos.0, pos.1, pos.2 + 1)) {
+        if !lava.contains(&(pos.0, pos.1, pos.2 + 1)) {
             interior_exposed += 1;
         }
 
@@ -106,10 +110,7 @@ pub fn solve(input: &str) -> (usize, usize) {
     let minimum = (minimum.0 - 1, minimum.2 - 1, minimum.2 - 1);
     let maximum = (maximum.0 + 1, maximum.2 + 1, maximum.2 + 1);
     let mut visited = HashSet::with_capacity(lava.len());
-
-    flood_fill(&mut lava, &mut visited, minimum, maximum, minimum);
-
-    let exterior_exposed = lava.values().map(|count| *count as usize).sum();
+    let exterior_exposed = flood_fill(&mut lava, &mut visited, minimum, maximum, minimum);
 
     (interior_exposed, exterior_exposed)
 }
