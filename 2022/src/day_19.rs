@@ -4,13 +4,13 @@ use text_io::scan;
 
 #[derive(Default)]
 struct Cost {
-    ore: u32,
-    clay: u32,
-    obsidian: u32,
+    ore: u16,
+    clay: u16,
+    obsidian: u16,
 }
 
 struct Blueprint {
-    id: u32,
+    id: u16,
     ore: Cost,
     clay: Cost,
     obsidian: Cost,
@@ -19,14 +19,14 @@ struct Blueprint {
 
 #[derive(Default, Clone, PartialEq, Eq, Hash)]
 struct Inventory {
-    ore: u32,
-    clay: u32,
-    obsidian: u32,
-    geode: u32,
-    ore_robot: u32,
-    clay_robot: u32,
-    obsidian_robot: u32,
-    geode_robot: u32,
+    ore: u16,
+    clay: u16,
+    obsidian: u16,
+    geode: u16,
+    ore_robot: u16,
+    clay_robot: u16,
+    obsidian_robot: u16,
+    geode_robot: u16,
 }
 
 fn can_afford(inv: &Inventory, cost: &Cost) -> bool {
@@ -49,17 +49,19 @@ fn produce(inv: &mut Inventory) {
 }
 
 fn simulate(
-    memoize: &mut HashMap::<(Inventory, u32), u32>,
+    memoize: &mut HashMap::<(Inventory, u16), u16>,
     blueprint: &Blueprint,
     inv: Inventory,
-    minutes: u32,
-) -> u32 {
+    minutes: u16,
+) -> u16 {
     if minutes == 0 {
         return inv.geode;
     }
 
-    if let Some(score) = memoize.get(&(inv.clone(), minutes)) {
-        return *score;
+    if minutes >= 5 {
+        if let Some(score) = memoize.get(&(inv.clone(), minutes)) {
+            return *score;
+        }
     }
 
     let mut score = 0;
@@ -80,41 +82,42 @@ fn simulate(
         score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
     }
 
-    if can_afford(&inv, &blueprint.obsidian) {
-        let mut new_inv = inv.clone();
-        spend(&mut new_inv, &blueprint.obsidian);
-        produce(&mut new_inv);
-        new_inv.obsidian_robot += 1;
-        score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
-    }
-
     if can_afford(&inv, &blueprint.geode) {
         let mut new_inv = inv.clone();
         spend(&mut new_inv, &blueprint.geode);
         produce(&mut new_inv);
         new_inv.geode_robot += 1;
         score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
+    } else if can_afford(&inv, &blueprint.obsidian) {
+        let mut new_inv = inv.clone();
+        spend(&mut new_inv, &blueprint.obsidian);
+        produce(&mut new_inv);
+        new_inv.obsidian_robot += 1;
+        score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
+    } else {
+        let mut new_inv = inv.clone();
+        produce(&mut new_inv);
+        score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
     }
 
-    let mut new_inv = inv.clone();
-    produce(&mut new_inv);
-    let score = score.max(simulate(memoize, blueprint, new_inv, minutes - 1));
-    memoize.insert((inv, minutes), score);
+    if minutes >= 5 {
+        memoize.insert((inv, minutes), score);
+    }
     score
 }
 
-pub fn solve(input: &str) -> (u32, usize) {
+pub fn solve(input: &str) -> (u16, u16) {
     let mut blueprints = Vec::<Blueprint>::new();
 
     for line in input.lines() {
         let mut line = line.bytes();
-        let i: u32;
-        let or_or: u32;
-        let cl_or: u32;
-        let ob_or: u32;
-        let ob_cl: u32;
-        let ge_or: u32;
-        let ge_ob: u32;
+        let i: u16;
+        let or_or: u16;
+        let cl_or: u16;
+        let ob_or: u16;
+        let ob_cl: u16;
+        let ge_or: u16;
+        let ge_ob: u16;
         scan!(
             line => "Blueprint {}: Each ore robot costs {} ore. Each clay robot costs {} ore. Each obsidian robot costs {} ore and {} clay. Each geode robot costs {} ore and {} obsidian.",
             i, or_or, cl_or, ob_or, ob_cl, ge_or, ge_ob
@@ -133,13 +136,21 @@ pub fn solve(input: &str) -> (u32, usize) {
         ..Default::default()
     };
     let mut memoize_table = HashMap::new();
-    let quality_sum = blueprints.iter()
+    /*let quality_sum = blueprints.iter()
         .map(|b| {
             println!("Processing blueprint: {}", b.id);
             memoize_table.clear();
             b.id * simulate(&mut memoize_table, b, inv.clone(), 24)
         })
-        .sum();
+        .sum();*/
+        let quality_sum = 0;
 
-    (quality_sum, 0)
+    let product = blueprints.iter().take(3).map(|b| {
+        println!("Processing blueprint: {}", b.id);
+        memoize_table.clear();
+        simulate(&mut memoize_table, b, inv.clone(), 32)
+    })
+    .product();
+
+    (quality_sum, product)
 }
