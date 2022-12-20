@@ -1,60 +1,65 @@
-pub fn solve(input: &str) -> (i32, usize) {
-    let mut nums = Vec::<(usize, i32)>::new();
+fn mix(nums: &mut Vec<(usize, i64)>) {
+    let len = nums.len() as i64;
+
+    for id in 0..nums.len() {
+        let old_index = nums.iter().position(|(i, _)| *i == id).unwrap();
+        let pair = nums[old_index];
+
+        if pair.1 == 0 {
+            continue;
+        }
+
+        let mut new_index = old_index as i64 + pair.1;
+
+        if new_index <= 0 {
+            new_index += (1 + (-new_index / (len - 1))) * (len - 1);
+        }
+        if new_index >= len {
+            new_index -= (0 + (new_index / (len - 1))) * (len - 1);
+        }
+
+        let new_index = new_index as usize;
+
+        if new_index == old_index {
+            continue;
+        }
+
+        if new_index > old_index {
+            nums.copy_within(old_index + 1..new_index + 1, old_index);
+        } else if new_index < old_index {
+            nums.copy_within(new_index..old_index, new_index + 1);
+        }
+
+        nums[new_index as usize] = pair;
+    }
+}
+
+fn get_coord_sum(nums: &[(usize, i64)]) -> i64 {
+    let zero_index = nums.iter().position(|(_, value)| *value == 0).unwrap();
+    let first = nums[(zero_index + 1000) % nums.len()].1;
+    let second = nums[(zero_index + 2000) % nums.len()].1;
+    let third = nums[(zero_index + 3000) % nums.len()].1;
+    first + second + third
+}
+
+pub fn solve(input: &str) -> (i64, i64) {
+    let mut nums = Vec::<(usize, i64)>::new();
 
     for line in input.lines() {
         nums.push((nums.len(), line.parse().unwrap()));
     }
 
-    for id in 0..nums.len() {
-        let mut old_index = nums.iter().position(|(i, _)| *i == id).unwrap();
-        let mut offset = nums[old_index].1;
+    let mut nums_2 = nums.clone();
 
-        while offset > 0 {
-            let len = nums.len();
-            if old_index == len - 1 {
-                let pair = nums.remove(len - 1);
-                nums.insert(1, pair);
-                old_index = 1;
-            } else {
-                nums.swap(old_index, old_index + 1);
-                old_index += 1;
-            }
-            offset -= 1;
-        }
-        while offset < 0 {
-            let len = nums.len();
-            if old_index == 0 {
-                let pair = nums.remove(0);
-                nums.insert(len - 2, pair);
-                old_index = len - 2;
-            } else {
-                nums.swap(old_index, old_index - 1);
-                old_index -= 1;
-                if old_index == 0 {
-                    let pair = nums.remove(0);
-                    nums.push(pair);
-                    old_index = len - 1;
-                }
-            }
-            offset += 1;
-        }
+    mix(&mut nums);
 
-        /*
-        let new_index = (old_index + ((offset + 10 * nums.len() as i32) as usize)) % nums.len();
-        if old_index as i32 + offset < 0 {
-            nums.insert(new_index, nums[old_index]);
-            nums.remove(old_index);
-        } else {
-            let pair = nums.remove(old_index);
-            nums.insert(new_index, pair);
-        }
-        */
+    for n in nums_2.iter_mut() {
+        n.1 *= 811589153;
     }
 
-    let zero_index = nums.iter().position(|(_, value)| *value == 0).unwrap();
-    let first = nums[(zero_index + 1000) % nums.len()].1;
-    let second = nums[(zero_index + 2000) % nums.len()].1;
-    let third = nums[(zero_index + 3000) % nums.len()].1;
+    for _ in 0..10 {
+        mix(&mut nums_2);
+    }
 
-    (first + second + third, 0)
+    (get_coord_sum(&nums), get_coord_sum(&nums_2))
 }
