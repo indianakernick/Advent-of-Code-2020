@@ -6,8 +6,8 @@ const fn to_id(b: &[u8]) -> MonkeyId {
     ((b[0] as u32) << 24) | ((b[1] as u32) << 16) | ((b[2] as u32) << 8) | b[3] as u32
 }
 
-const ROOT: MonkeyId = to_id(&[b'r', b'o', b'o', b't']);
-const HUMAN: MonkeyId = to_id(&[b'h', b'u', b'm', b'n']);
+const ROOT: MonkeyId = to_id(b"root");
+const HUMAN: MonkeyId = to_id(b"humn");
 
 #[derive(Clone, Copy)]
 enum Monkey {
@@ -19,34 +19,31 @@ enum Monkey {
     Div(MonkeyId, MonkeyId),
 }
 
-struct EvalResult {
+type MonkeyMap = HashMap<MonkeyId, Monkey>;
+
+struct FoldResult {
     value: i64,
     variable: bool
 }
 
-impl EvalResult {
-    fn new(value: i64, variable: bool) -> Self {
-        Self { value, variable }
-    }
-}
-
 fn fold_pair<F: Fn(i64, i64) -> i64>(
-    map: &mut HashMap::<MonkeyId, Monkey>,
+    map: &mut MonkeyMap,
     lhs: MonkeyId,
     rhs: MonkeyId,
     op: F,
-) -> EvalResult {
+) -> FoldResult {
     let lhs = fold(map, lhs);
     let rhs = fold(map, rhs);
-    let value = op(lhs.value, rhs.value);
-    let variable = lhs.variable || rhs.variable;
-    EvalResult::new(value, variable)
+    FoldResult {
+        value: op(lhs.value, rhs.value),
+        variable: lhs.variable || rhs.variable
+    }
 }
 
-fn fold(map: &mut HashMap<MonkeyId, Monkey>, id: MonkeyId) -> EvalResult {
+fn fold(map: &mut MonkeyMap, id: MonkeyId) -> FoldResult {
     let res = match map.get(&id).unwrap() {
-        Monkey::Var(v) => EvalResult::new(*v, true),
-        Monkey::Const(v) => EvalResult::new(*v, false),
+        Monkey::Var(v) => FoldResult { value: *v, variable: true },
+        Monkey::Const(v) => FoldResult { value: *v, variable: false },
         Monkey::Add(a, b) => fold_pair(map, *a, *b, |a, b| a + b),
         Monkey::Sub(a, b) => fold_pair(map, *a, *b, |a, b| a - b),
         Monkey::Mul(a, b) => fold_pair(map, *a, *b, |a, b| a * b),
@@ -60,51 +57,45 @@ fn fold(map: &mut HashMap<MonkeyId, Monkey>, id: MonkeyId) -> EvalResult {
     res
 }
 
-fn search(map: &HashMap<MonkeyId, Monkey>, id: MonkeyId, target: i64) -> i64 {
+fn search_pair<L, R>(
+    map: &MonkeyMap,
+    lhs_id: MonkeyId,
+    rhs_id: MonkeyId,
+    eval_lhs: L,
+    eval_rhs: R,
+) -> i64
+    where L: Fn(i64) -> i64, R: Fn(i64) -> i64
+{
+    let lhs = map.get(&lhs_id).unwrap();
+    let rhs = map.get(&rhs_id).unwrap();
+    match (lhs, rhs) {
+        (Monkey::Const(lhs_value), _) => search(map, rhs_id, eval_lhs(*lhs_value)),
+        (_, Monkey::Const(rhs_value)) => search(map, lhs_id, eval_rhs(*rhs_value)),
+        _ => panic!()
+    }
+}
+
+fn search(map: &MonkeyMap, id: MonkeyId, target: i64) -> i64 {
     match map.get(&id).unwrap() {
         Monkey::Var(_) => target,
         Monkey::Const(_) => panic!(),
-        Monkey::Add(lhs_id, rhs_id) => {
-            let lhs = map.get(lhs_id).unwrap();
-            let rhs = map.get(rhs_id).unwrap();
-            match (lhs, rhs) {
-                (Monkey::Const(lhs_value), _) => search(map, *rhs_id, target - lhs_value),
-                (_, Monkey::Const(rhs_value)) => search(map, *lhs_id, target - rhs_value),
-                _ => panic!()
-            }
+        Monkey::Add(lhs, rhs) => {
+            search_pair(map, *lhs, *rhs, |l| target - l, |r| target - r)
         }
-        Monkey::Sub(lhs_id, rhs_id) => {
-            let lhs = map.get(lhs_id).unwrap();
-            let rhs = map.get(rhs_id).unwrap();
-            match (lhs, rhs) {
-                (Monkey::Const(lhs_value), _) => search(map, *rhs_id, lhs_value - target),
-                (_, Monkey::Const(rhs_value)) => search(map, *lhs_id, target + rhs_value),
-                _ => panic!()
-            }
+        Monkey::Sub(lhs, rhs) => {
+            search_pair(map, *lhs, *rhs, |l| l - target, |r| target + r)
         }
-        Monkey::Mul(lhs_id, rhs_id) => {
-            let lhs = map.get(lhs_id).unwrap();
-            let rhs = map.get(rhs_id).unwrap();
-            match (lhs, rhs) {
-                (Monkey::Const(lhs_value), _) => search(map, *rhs_id, target / lhs_value),
-                (_, Monkey::Const(rhs_value)) => search(map, *lhs_id, target / rhs_value),
-                _ => panic!()
-            }
+        Monkey::Mul(lhs, rhs) => {
+            search_pair(map, *lhs, *rhs, |l| target / l, |r| target / r)
         }
-        Monkey::Div(lhs_id, rhs_id) => {
-            let lhs = map.get(lhs_id).unwrap();
-            let rhs = map.get(rhs_id).unwrap();
-            match (lhs, rhs) {
-                (Monkey::Const(lhs_value), _) => search(map, *rhs_id, lhs_value / target),
-                (_, Monkey::Const(rhs_value)) => search(map, *lhs_id, target * rhs_value),
-                _ => panic!()
-            }
+        Monkey::Div(lhs, rhs) => {
+            search_pair(map, *lhs, *rhs, |l| l / target, |r| target * r)
         }
     }
 }
 
 pub fn solve(input: &str) -> (i64, i64) {
-    let mut monkeys = HashMap::<MonkeyId, Monkey>::new();
+    let mut monkeys = MonkeyMap::new();
 
     for line in input.lines() {
         let bytes = line.as_bytes();
@@ -117,16 +108,16 @@ pub fn solve(input: &str) -> (i64, i64) {
             } else {
                 monkey = Monkey::Const(line[6..].parse().unwrap());
             }
-        } else if bytes[11] == b'+' {
-            monkey = Monkey::Add(to_id(&bytes[6..10]), to_id(&bytes[13..]));
-        } else if bytes[11] == b'-' {
-            monkey = Monkey::Sub(to_id(&bytes[6..10]), to_id(&bytes[13..]));
-        } else if bytes[11] == b'*' {
-            monkey = Monkey::Mul(to_id(&bytes[6..10]), to_id(&bytes[13..]));
-        } else if bytes[11] == b'/' {
-            monkey = Monkey::Div(to_id(&bytes[6..10]), to_id(&bytes[13..]));
         } else {
-            panic!("Invalid input");
+            let lhs = to_id(&bytes[6..10]);
+            let rhs = to_id(&bytes[13..]);
+            monkey = match bytes[11] {
+                b'+' => Monkey::Add(lhs, rhs),
+                b'-' => Monkey::Sub(lhs, rhs),
+                b'*' => Monkey::Mul(lhs, rhs),
+                b'/' => Monkey::Div(lhs, rhs),
+                _ => panic!("Invalid input"),
+            };
         }
 
         monkeys.insert(id, monkey);
@@ -149,4 +140,28 @@ pub fn solve(input: &str) -> (i64, i64) {
     };
 
     (part_1, part_2)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"root: pppw + sjmn
+dbpl: 5
+cczh: sllz + lgvd
+zczc: 2
+ptdq: humn - dvpt
+dvpt: 3
+lfqf: 4
+humn: 5
+ljgn: 2
+sjmn: drzm * dbpl
+sllz: 4
+pppw: cczh / lfqf
+lgvd: ljgn * ptdq
+drzm: hmdt - zczc
+hmdt: 32";
+    let output = solve(input);
+    assert_eq!(output.0, 152);
+    assert_eq!(output.1, 301);
 }
