@@ -14,79 +14,45 @@ enum Instruction {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
-enum Direction {
+enum Dir {
     Right,
     Down,
     Left,
     Up,
 }
 
-impl Direction {
+impl Dir {
     fn to_vec(&self) -> (i32, i32) {
         match self {
-            Direction::Up => (0, -1),
-            Direction::Right => (1, 0),
-            Direction::Down => (0, 1),
-            Direction::Left => (-1, 0),
+            Self::Right => (1, 0),
+            Self::Down => (0, 1),
+            Self::Left => (-1, 0),
+            Self::Up => (0, -1),
         }
+    }
+
+    pub fn rotate_cw(&self) -> Self {
+        unsafe { std::mem::transmute((*self as u8 + 1) % 4) }
+    }
+
+    pub fn rotate_ccw(&self) -> Self {
+        unsafe { std::mem::transmute((*self as u8 + 4 - 1) % 4) }
     }
 }
 
-fn get_password(position: (i32, i32), direction: Direction) -> i32 {
+fn get_password(position: (i32, i32), direction: Dir) -> i32 {
     1000 * (position.1 + 1) + 4 * (position.0 + 1) + direction as i32
 }
 
-fn simulate_1(
+fn simulate<F>(
     tiles: &HashMap::<(i32, i32), Tile>,
     instructions: &[Instruction],
     mut position: (i32, i32),
-    mut direction: Direction,
-) -> ((i32, i32), Direction) {
-    for instr in instructions.iter() {
-        match instr {
-            Instruction::Walk(dist) => {
-                let vec = direction.to_vec();
-                for _ in 0..*dist {
-                    let next_pos = (position.0 + vec.0, position.1 + vec.1);
-                    match tiles.get(&next_pos) {
-                        Some(Tile::Walkable) => {
-                            position = next_pos;
-                        }
-                        Some(Tile::Wall) => {
-                            break;
-                        }
-                        None => {
-                            let mut pos = position;
-                            while tiles.get(&pos).is_some() {
-                                pos = (pos.0 - vec.0, pos.1 - vec.1);
-                            }
-                            pos = (pos.0 + vec.0, pos.1 + vec.1);
-                            match tiles.get(&pos).unwrap() {
-                                Tile::Walkable => { position = pos; }
-                                Tile::Wall => break,
-                            }
-                        }
-                    }
-                }
-            }
-            Instruction::Left => {
-                direction = unsafe { std::mem::transmute(((direction as u8) + 4 - 1) % 4) };
-            }
-            Instruction::Right => {
-                direction = unsafe { std::mem::transmute(((direction as u8) + 1) % 4) };
-            }
-        }
-    }
-
-    (position, direction)
-}
-
-fn simulate_2(
-    tiles: &HashMap::<(i32, i32), Tile>,
-    instructions: &[Instruction],
-    mut position: (i32, i32),
-    mut direction: Direction,
-) -> ((i32, i32), Direction) {
+    mut direction: Dir,
+    edge: F
+) -> ((i32, i32), Dir)
+    where F: Fn((i32, i32), Dir) -> ((i32, i32), Dir)
+{
     for instr in instructions.iter() {
         match instr {
             Instruction::Walk(dist) => {
@@ -97,57 +63,9 @@ fn simulate_2(
                         Some(Tile::Walkable) => {
                             position = next_pos;
                         }
-                        Some(Tile::Wall) => {
-                            break;
-                        }
+                        Some(Tile::Wall) => break,
                         None => {
-                            let super_tile = (position.0 / 50, position.1 / 50);
-                            let in_tile = (position.0 % 50, position.1 % 50);
-                            let (next_pos, next_dir) = match (super_tile, direction) {
-                                ((1, 0), Direction::Left) => {
-                                    ((0, 100 + 49 - in_tile.1), Direction::Right)
-                                },
-                                ((1, 0), Direction::Up) => {
-                                    ((0, 150 + in_tile.0), Direction::Right)
-                                },
-                                ((2, 0), Direction::Right) => {
-                                    ((99, 100 + 49 - in_tile.1), Direction::Left)
-                                }
-                                ((2, 0), Direction::Down) => {
-                                    ((99, 50 + in_tile.0), Direction::Left)
-                                }
-                                ((2, 0), Direction::Up) => {
-                                    ((in_tile.0, 199), Direction::Up)
-                                },
-                                ((1, 1), Direction::Right) => {
-                                    ((100 + in_tile.1, 49), Direction::Up)
-                                }
-                                ((1, 1), Direction::Left) => {
-                                    ((in_tile.1, 100), Direction::Down)
-                                },
-                                ((0, 2), Direction::Left) => {
-                                    ((50, 49 - in_tile.1), Direction::Right)
-                                }
-                                ((0, 2), Direction::Up) => {
-                                    ((50, 50 + in_tile.0), Direction::Right)
-                                },
-                                ((1, 2), Direction::Right) => {
-                                    ((149, 49 - in_tile.1), Direction::Left)
-                                },
-                                ((1, 2), Direction::Down) => {
-                                    ((49, 150 + in_tile.0), Direction::Left)
-                                },
-                                ((0, 3), Direction::Right) => {
-                                    ((50 + in_tile.1, 149), Direction::Up)
-                                },
-                                ((0, 3), Direction::Down) => {
-                                    ((100 + in_tile.0, 0), Direction::Down)
-                                }
-                                ((0, 3), Direction::Left) => {
-                                    ((50 + in_tile.1, 0), Direction::Down)
-                                }
-                                _ => panic!(),
-                            };
+                            let (next_pos, next_dir) = edge(position, direction);
                             match tiles.get(&next_pos).unwrap() {
                                 Tile::Walkable => {
                                     position = next_pos;
@@ -160,10 +78,10 @@ fn simulate_2(
                 }
             }
             Instruction::Left => {
-                direction = unsafe { std::mem::transmute(((direction as u8) + 4 - 1) % 4) };
+                direction = direction.rotate_ccw();
             }
             Instruction::Right => {
-                direction = unsafe { std::mem::transmute(((direction as u8) + 1) % 4) };
+                direction = direction.rotate_cw();
             }
         }
     }
@@ -171,12 +89,56 @@ fn simulate_2(
     (position, direction)
 }
 
+fn flat_edge(position: (i32, i32), direction: Dir) -> ((i32, i32), Dir) {
+    let super_tile = (position.0 / 50, position.1 / 50);
+    let pos = match (super_tile, direction) {
+        ((1, 0), Dir::Left) => (149, position.1),
+        ((1, 0), Dir::Up) => (position.0, 149),
+        ((2, 0), Dir::Right) => (50, position.1),
+        ((2, 0), Dir::Down) => (position.0, 0),
+        ((2, 0), Dir::Up) => (position.0, 49),
+        ((1, 1), Dir::Right) => (50, position.1),
+        ((1, 1), Dir::Left) => (99, position.1),
+        ((0, 2), Dir::Left) => (99, position.1),
+        ((0, 2), Dir::Up) => (position.0, 199),
+        ((1, 2), Dir::Right) => (0, position.1),
+        ((1, 2), Dir::Down) => (position.0, 0),
+        ((0, 3), Dir::Right) => (0, position.1),
+        ((0, 3), Dir::Down) => (position.0, 100),
+        ((0, 3), Dir::Left) => (49, position.1),
+        _ => panic!(),
+    };
+    (pos, direction)
+}
+
+fn cube_edge(position: (i32, i32), direction: Dir) -> ((i32, i32), Dir) {
+    let super_tile = (position.0 / 50, position.1 / 50);
+    let in_tile = (position.0 % 50, position.1 % 50);
+    match (super_tile, direction) {
+        ((1, 0), Dir::Left) => ((0, 100 + 49 - in_tile.1), Dir::Right),
+        ((1, 0), Dir::Up) => ((0, 150 + in_tile.0), Dir::Right),
+        ((2, 0), Dir::Right) => ((99, 100 + 49 - in_tile.1), Dir::Left),
+        ((2, 0), Dir::Down) => ((99, 50 + in_tile.0), Dir::Left),
+        ((2, 0), Dir::Up) => ((in_tile.0, 199), Dir::Up),
+        ((1, 1), Dir::Right) => ((100 + in_tile.1, 49), Dir::Up),
+        ((1, 1), Dir::Left) => ((in_tile.1, 100), Dir::Down),
+        ((0, 2), Dir::Left) => ((50, 49 - in_tile.1), Dir::Right),
+        ((0, 2), Dir::Up) => ((50, 50 + in_tile.0), Dir::Right),
+        ((1, 2), Dir::Right) => ((149, 49 - in_tile.1), Dir::Left),
+        ((1, 2), Dir::Down) => ((49, 150 + in_tile.0), Dir::Left),
+        ((0, 3), Dir::Right) => ((50 + in_tile.1, 149), Dir::Up),
+        ((0, 3), Dir::Down) => ((100 + in_tile.0, 0), Dir::Down),
+        ((0, 3), Dir::Left) => ((50 + in_tile.1, 0), Dir::Down),
+        _ => panic!(),
+    }
+}
+
 pub fn solve(input: &str) -> (i32, i32) {
     let mut tiles = HashMap::<(i32, i32), Tile>::new();
     let mut instructions = Vec::<Instruction>::new();
     let mut read_instructions = false;
     let mut position = (0, 0);
-    let direction = Direction::Right;
+    let direction = Dir::Right;
 
     for (y, line) in input.lines().enumerate() {
         if read_instructions {
@@ -217,10 +179,13 @@ pub fn solve(input: &str) -> (i32, i32) {
         }
     }
 
-    let (position_1, direction_1) = simulate_1(&tiles, &instructions, position, direction);
+    let (position_1, direction_1) = simulate(&tiles, &instructions, position, direction, flat_edge);
     let password_1 = get_password(position_1, direction_1);
-    let (position_2, direction_2) = simulate_2(&tiles, &instructions, position, direction);
+    let (position_2, direction_2) = simulate(&tiles, &instructions, position, direction, cube_edge);
     let password_2 = get_password(position_2, direction_2);
 
     (password_1, password_2)
 }
+
+// No test because the flat_edge and cube_edge functions make some assumptions
+// about the input that don't hold for the example input.
