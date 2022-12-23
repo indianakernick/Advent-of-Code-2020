@@ -1,10 +1,62 @@
 use std::collections::{HashSet, HashMap};
 
+fn bounding_area(elves: &HashSet<(i32, i32)>) -> i32 {
+    let mut min = (i32::MAX, i32::MAX);
+    let mut max = (i32::MIN, i32::MIN);
+
+    for elf in elves.iter() {
+        min = (min.0.min(elf.0), min.1.min(elf.1));
+        max = (max.0.max(elf.0), max.1.max(elf.1));
+    }
+
+    (max.0 - min.0 + 1) * (max.1 - min.1 + 1) - elves.len() as i32
+}
+
+#[derive(Clone, Copy)]
+enum Dir8 {
+    NW,
+    N,
+    NE,
+    E,
+    SE,
+    S,
+    SW,
+    W,
+}
+
+impl Dir8 {
+    const ALL: [Dir8; 8] = [Dir8::NW, Dir8::N, Dir8::NE, Dir8::E, Dir8::SE, Dir8::S, Dir8::SW, Dir8::W];
+    const NORTH: [Dir8; 3] = [Dir8::NW, Dir8::N, Dir8::NE];
+    const EAST: [Dir8; 3] = [Dir8::NE, Dir8::E, Dir8::SE];
+    const SOUTH: [Dir8; 3] = [Dir8::SE, Dir8::S, Dir8::SW];
+    const WEST: [Dir8; 3] = [Dir8::SW, Dir8::W, Dir8::NW];
+}
+
+fn add(pos: (i32, i32), dir: Dir8) -> (i32, i32) {
+    match dir {
+        Dir8::NW => (pos.0 - 1, pos.1 - 1),
+        Dir8::N => (pos.0, pos.1 - 1),
+        Dir8::NE => (pos.0 + 1, pos.1 - 1),
+        Dir8::E => (pos.0 + 1, pos.1),
+        Dir8::SE => (pos.0 + 1, pos.1 + 1),
+        Dir8::S => (pos.0, pos.1 + 1),
+        Dir8::SW => (pos.0 - 1, pos.1 + 1),
+        Dir8::W => (pos.0 - 1, pos.1),
+    }
+}
+
 pub fn solve(input: &str) -> (i32, usize) {
+    const DIRS: [Dir8; 4] = [
+        Dir8::N, Dir8::S, Dir8::W, Dir8::E,
+    ];
+    const DIR_SETS: [&[Dir8; 3]; 4] = [
+        &Dir8::NORTH, &Dir8::SOUTH, &Dir8::WEST, &Dir8::EAST,
+    ];
+
     let mut elves = HashSet::<(i32, i32)>::new();
-    let mut elves2 = HashSet::<(i32, i32)>::new();
-    let mut proposals = HashMap::<(i32, i32), Vec::<(i32, i32)>>::new();
-    let mut direction_offset = 0;
+    let mut elves_buf = HashSet::<(i32, i32)>::new();
+    let mut proposals = HashMap::<(i32, i32), Vec<(i32, i32)>>::new();
+    let mut dir_off = 0;
     let mut stable_round = 0;
     let mut round_10_area = 0;
 
@@ -17,121 +69,81 @@ pub fn solve(input: &str) -> (i32, usize) {
     }
 
     for r in 1.. {
-        let mut someone_moved = false;
+        let mut any_moved = false;
 
         for elf in elves.iter() {
-            let any = elves.contains(&(elf.0 + -1, elf.1 + -1))
-                || elves.contains(&(elf.0 + 0, elf.1 + -1))
-                || elves.contains(&(elf.0 + 1, elf.1 + -1))
-                || elves.contains(&(elf.0 + 1, elf.1 + 0))
-                || elves.contains(&(elf.0 + 1, elf.1 + 1))
-                || elves.contains(&(elf.0 + 0, elf.1 + 1))
-                || elves.contains(&(elf.0 + -1, elf.1 + 1))
-                || elves.contains(&(elf.0 + -1, elf.1 + 0));
-            if !any {
+            if Dir8::ALL.iter().map(|d| elves.contains(&add(*elf, *d))).all(|c| !c) {
                 proposals.insert(*elf, vec![*elf]);
                 continue;
             }
 
             let mut moved = false;
 
-            for d in 0..4 {
-                if (d + direction_offset) % 4 == 0 {
-                    // North
-                    if !elves.contains(&(elf.0 - 1, elf.1 - 1))
-                        && !elves.contains(&(elf.0, elf.1 - 1))
-                        && !elves.contains(&(elf.0 + 1, elf.1 - 1))
-                    {
-                        proposals.entry((elf.0, elf.1 - 1))
-                            .and_modify(|v| v.push(*elf))
-                            .or_insert(vec![*elf]);
-                        moved = true;
-                        break;
-                    }
-                }
+            for dir_idx in 0..4 {
+                let dir = DIRS[(dir_idx + dir_off) % 4];
+                let dir_set = DIR_SETS[(dir_idx + dir_off) % 4];
 
-                if (d + direction_offset) % 4 == 1 {
-                    // South
-                    if !elves.contains(&(elf.0 - 1, elf.1 + 1))
-                        && !elves.contains(&(elf.0, elf.1 + 1))
-                        && !elves.contains(&(elf.0 + 1, elf.1 + 1))
-                    {
-                        proposals.entry((elf.0, elf.1 + 1))
-                            .and_modify(|v| v.push(*elf))
-                            .or_insert(vec![*elf]);
-                        moved = true;
-                        break;
-                    }
-                }
-
-                if (d + direction_offset) % 4 == 2 {
-                    // West
-                    if !elves.contains(&(elf.0 - 1, elf.1 - 1))
-                        && !elves.contains(&(elf.0 - 1, elf.1))
-                        && !elves.contains(&(elf.0 - 1, elf.1 + 1))
-                    {
-                        proposals.entry((elf.0 - 1, elf.1))
-                            .and_modify(|v| v.push(*elf))
-                            .or_insert(vec![*elf]);
-                        moved = true;
-                        break;
-                    }
-                }
-
-                if (d + direction_offset) % 4 == 3 {
-                    // East
-                    if !elves.contains(&(elf.0 + 1, elf.1 - 1))
-                        && !elves.contains(&(elf.0 + 1, elf.1))
-                        && !elves.contains(&(elf.0 + 1, elf.1 + 1))
-                    {
-                        proposals.entry((elf.0 + 1, elf.1))
-                            .and_modify(|v| v.push(*elf))
-                            .or_insert(vec![*elf]);
-                        moved = true;
-                        break;
-                    }
+                if dir_set.iter().map(|d| elves.contains(&add(*elf, *d))).all(|c| !c) {
+                    proposals.entry(add(*elf, dir))
+                        .and_modify(|v| v.push(*elf))
+                        .or_insert(vec![*elf]);
+                    moved = true;
+                    break;
                 }
             }
 
             if !moved {
                 proposals.insert(*elf, vec![*elf]);
             } else {
-                someone_moved = true;
+                any_moved = true;
             }
         }
 
         for (destination, sources) in proposals.iter() {
             if sources.len() > 1 {
                 for elf in sources.iter() {
-                    elves2.insert(*elf);
+                    elves_buf.insert(*elf);
                 }
             } else {
-                elves2.insert(*destination);
+                elves_buf.insert(*destination);
             }
         }
 
-        std::mem::swap(&mut elves, &mut elves2);
-        elves2.clear();
+        std::mem::swap(&mut elves, &mut elves_buf);
+        elves_buf.clear();
         proposals.clear();
-        direction_offset += 1;
+        dir_off += 1;
 
         if r == 10 {
-            let mut min = (i32::MAX, i32::MAX);
-            let mut max = (i32::MIN, i32::MIN);
-
-            for elf in elves.iter() {
-                min = (min.0.min(elf.0), min.1.min(elf.1));
-                max = (max.0.max(elf.0), max.1.max(elf.1));
-            }
-
-            round_10_area = (max.0 - min.0 + 1) * (max.1 - min.1 + 1) - elves.len() as i32;
+            round_10_area = bounding_area(&elves);
         }
 
-        if !someone_moved {
+        if !any_moved {
             stable_round = r;
             break;
         }
     }
 
     (round_10_area, stable_round)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"..............
+..............
+.......#......
+.....###.#....
+...#...#.#....
+....#...##....
+...#.###......
+...##.#.##....
+....#..#......
+..............
+..............
+..............";
+    let output = solve(input);
+    assert_eq!(output.0, 110);
+    assert_eq!(output.1, 20);
 }
