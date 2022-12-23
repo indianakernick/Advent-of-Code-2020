@@ -5,6 +5,8 @@ pub fn solve(input: &str) -> (i32, usize) {
     let mut elves2 = HashSet::<(i32, i32)>::new();
     let mut proposals = HashMap::<(i32, i32), Vec::<(i32, i32)>>::new();
     let mut direction_offset = 0;
+    let mut stable_round = 0;
+    let mut round_10_area = 0;
 
     for (y, line) in input.lines().enumerate() {
         for (x, b) in line.bytes().enumerate() {
@@ -14,7 +16,9 @@ pub fn solve(input: &str) -> (i32, usize) {
         }
     }
 
-    for _ in 0..10 {
+    for r in 1.. {
+        let mut someone_moved = false;
+
         for elf in elves.iter() {
             let any = elves.contains(&(elf.0 + -1, elf.1 + -1))
                 || elves.contains(&(elf.0 + 0, elf.1 + -1))
@@ -91,6 +95,8 @@ pub fn solve(input: &str) -> (i32, usize) {
 
             if !moved {
                 proposals.insert(*elf, vec![*elf]);
+            } else {
+                someone_moved = true;
             }
         }
 
@@ -108,17 +114,24 @@ pub fn solve(input: &str) -> (i32, usize) {
         elves2.clear();
         proposals.clear();
         direction_offset += 1;
+
+        if r == 10 {
+            let mut min = (i32::MAX, i32::MAX);
+            let mut max = (i32::MIN, i32::MIN);
+
+            for elf in elves.iter() {
+                min = (min.0.min(elf.0), min.1.min(elf.1));
+                max = (max.0.max(elf.0), max.1.max(elf.1));
+            }
+
+            round_10_area = (max.0 - min.0 + 1) * (max.1 - min.1 + 1) - elves.len() as i32;
+        }
+
+        if !someone_moved {
+            stable_round = r;
+            break;
+        }
     }
 
-    let mut min = (i32::MAX, i32::MAX);
-    let mut max = (i32::MIN, i32::MIN);
-
-    for elf in elves.iter() {
-        min = (min.0.min(elf.0), min.1.min(elf.1));
-        max = (max.0.max(elf.0), max.1.max(elf.1));
-    }
-
-    let area = (max.0 - min.0 + 1) * (max.1 - min.1 + 1) - elves.len() as i32;
-
-    (area, 0)
+    (round_10_area, stable_round)
 }
