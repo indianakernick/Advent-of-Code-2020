@@ -1,0 +1,129 @@
+use std::collections::{HashMap, VecDeque, HashSet};
+
+#[derive(Clone, Copy)]
+enum Dir4 {
+    N,
+    E,
+    S,
+    W,
+}
+
+impl Dir4 {
+    const ALL: [Dir4; 4] = [Dir4::N, Dir4::E, Dir4::S, Dir4::W];
+
+    fn to_vec(&self) -> (i32, i32) {
+        match self {
+            Self::N => (0, -1),
+            Self::E => (1, 0),
+            Self::S => (0, 1),
+            Self::W => (-1, 0),
+        }
+    }
+}
+
+fn is_wall(size: (i32, i32), pos: (i32, i32)) -> bool {
+    if pos.1 < 0 || pos.1 > size.1 - 1 {
+        return true;
+    }
+    if pos.1 == 0 {
+        return pos.0 != 1;
+    }
+    if pos.1 == size.1 - 1 {
+        return pos.0 != size.0 - 2;
+    }
+    return pos.0 == 0 || pos.0 == size.0 - 1;
+}
+
+fn simulate(
+    size: (i32, i32),
+    blizzards: &HashMap<(i32, i32), Vec<Dir4>>,
+) -> HashMap<(i32, i32), Vec<Dir4>> {
+    let mut new_blizzards = HashMap::new();
+
+    for (pos, dirs) in blizzards.iter() {
+        for dir in dirs.iter() {
+            let vec = dir.to_vec();
+            let mut next_pos = (pos.0 + vec.0, pos.1 + vec.1);
+            if next_pos.0 == 0 {
+                next_pos.0 = size.0 - 2;
+            } else if next_pos.0 == size.0 - 1 {
+                next_pos.0 = 1;
+            } else if next_pos.1 == 0 {
+                next_pos.1 = size.1 - 2;
+            } else if next_pos.1 == size.1 - 1 {
+                next_pos.1 = 1;
+            }
+            new_blizzards.entry(next_pos)
+                .and_modify(|d: &mut Vec<Dir4>| d.push(*dir))
+                .or_insert(vec![*dir]);
+        }
+    }
+
+    new_blizzards
+}
+
+fn search(
+    size: (i32, i32),
+    mut blizzards: Vec<HashMap<(i32, i32), Vec<Dir4>>>,
+    mut queue: VecDeque<((i32, i32), usize)>,
+) -> usize {
+    let mut visited = HashSet::<((i32, i32), usize)>::new();
+    for node in queue.iter() {
+        visited.insert(*node);
+    }
+
+    while let Some((pos, minutes)) = queue.pop_front() {
+        if pos.0 == size.0 - 2 && pos.1 == size.1 - 1 {
+            return minutes;
+        }
+
+        while minutes + 1 >= blizzards.len() {
+            let next = simulate(size, &blizzards[blizzards.len() - 1]);
+            blizzards.push(next);
+        }
+
+        for dir in Dir4::ALL {
+            let vec = dir.to_vec();
+            let next_pos = (pos.0 + vec.0, pos.1 + vec.1);
+            if is_wall(size, next_pos) { continue }
+            if visited.contains(&(next_pos, minutes + 1)) { continue }
+            if blizzards[minutes + 1].contains_key(&next_pos) { continue }
+            visited.insert((next_pos, minutes + 1));
+            queue.push_back((next_pos, minutes + 1));
+        }
+
+        if visited.contains(&(pos, minutes + 1)) { continue }
+        if blizzards[minutes + 1].contains_key(&pos) { continue }
+        visited.insert((pos, minutes + 1));
+        queue.push_back((pos, minutes + 1));
+    }
+
+    return usize::MAX;
+}
+
+pub fn solve(input: &str) -> (usize, usize) {
+    let mut width = 0;
+    let mut height = 0;
+    let mut blizzards = HashMap::<(i32, i32), Vec<Dir4>>::new();
+
+    for (y, line) in input.lines().enumerate() {
+        width = line.len() as i32;
+        height = (y + 1) as i32;
+        for (x, b) in line.bytes().enumerate() {
+            let dir = match b {
+                b'^' => Dir4::N,
+                b'>' => Dir4::E,
+                b'v' => Dir4::S,
+                b'<' => Dir4::W,
+                _ => continue,
+            };
+            blizzards.insert((x as i32, y as i32), vec![dir]);
+        }
+    }
+
+    let mut queue = VecDeque::new();
+    queue.push_back(((1, 0), 0));
+    let min_minutes = search((width, height), vec![blizzards], queue);
+
+    (min_minutes, 0)
+}
