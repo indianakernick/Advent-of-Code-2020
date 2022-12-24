@@ -64,16 +64,19 @@ fn simulate(
 
 fn search(
     size: (i32, i32),
-    mut blizzards: Vec<HashMap<(i32, i32), Vec<Dir4>>>,
-    mut queue: VecDeque<((i32, i32), usize)>,
+    start_pos: (i32, i32),
+    end_pos: (i32, i32),
+    minutes: usize,
+    blizzards: &mut Vec<HashMap<(i32, i32), Vec<Dir4>>>,
 ) -> usize {
+    let mut queue = VecDeque::<((i32, i32), usize)>::new();
     let mut visited = HashSet::<((i32, i32), usize)>::new();
-    for node in queue.iter() {
-        visited.insert(*node);
-    }
+
+    queue.push_back((start_pos, minutes));
+    visited.insert((start_pos, minutes));
 
     while let Some((pos, minutes)) = queue.pop_front() {
-        if pos.0 == size.0 - 2 && pos.1 == size.1 - 1 {
+        if pos.0 == end_pos.0 && pos.1 == end_pos.1 {
             return minutes;
         }
 
@@ -121,9 +124,14 @@ pub fn solve(input: &str) -> (usize, usize) {
         }
     }
 
-    let mut queue = VecDeque::new();
-    queue.push_back(((1, 0), 0));
-    let min_minutes = search((width, height), vec![blizzards], queue);
+    let size = (width, height);
+    let top_left = (1, 0);
+    let bottom_right = (size.0 - 2, size.1 - 1);
+    let mut blizzards = vec![blizzards];
 
-    (min_minutes, 0)
+    let part_1 = search(size, top_left, bottom_right, 0, &mut blizzards);
+    let back = search(size, bottom_right, top_left, part_1, &mut blizzards);
+    let part_2 = search(size, top_left, bottom_right, back, &mut blizzards);
+
+    (part_1, part_2)
 }
