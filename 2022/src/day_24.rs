@@ -9,8 +9,6 @@ enum Dir4 {
 }
 
 impl Dir4 {
-    const ALL: [Dir4; 4] = [Dir4::N, Dir4::E, Dir4::S, Dir4::W];
-
     fn to_vec(&self) -> (i32, i32) {
         match self {
             Self::N => (0, -1),
@@ -44,6 +42,7 @@ fn simulate(
         for dir in dirs.iter() {
             let vec = dir.to_vec();
             let mut next_pos = (pos.0 + vec.0, pos.1 + vec.1);
+
             if next_pos.0 == 0 {
                 next_pos.0 = size.0 - 2;
             } else if next_pos.0 == size.0 - 1 {
@@ -53,6 +52,7 @@ fn simulate(
             } else if next_pos.1 == size.1 - 1 {
                 next_pos.1 = 1;
             }
+
             new_blizzards.entry(next_pos)
                 .and_modify(|d: &mut Vec<Dir4>| d.push(*dir))
                 .or_insert(vec![*dir]);
@@ -81,24 +81,20 @@ fn search(
         }
 
         while minutes + 1 >= blizzards.len() {
-            let next = simulate(size, &blizzards[blizzards.len() - 1]);
-            blizzards.push(next);
+            blizzards.push(simulate(size, &blizzards[blizzards.len() - 1]));
         }
 
-        for dir in Dir4::ALL {
-            let vec = dir.to_vec();
+        for vec in [(0, -1), (1, 0), (0, 1), (-1, 0), (0, 0)] {
             let next_pos = (pos.0 + vec.0, pos.1 + vec.1);
-            if is_wall(size, next_pos) { continue }
-            if visited.contains(&(next_pos, minutes + 1)) { continue }
-            if blizzards[minutes + 1].contains_key(&next_pos) { continue }
-            visited.insert((next_pos, minutes + 1));
-            queue.push_back((next_pos, minutes + 1));
-        }
+            let vertex = (next_pos, minutes + 1);
 
-        if visited.contains(&(pos, minutes + 1)) { continue }
-        if blizzards[minutes + 1].contains_key(&pos) { continue }
-        visited.insert((pos, minutes + 1));
-        queue.push_back((pos, minutes + 1));
+            if is_wall(size, next_pos) { continue }
+            if visited.contains(&vertex) { continue }
+            if blizzards[minutes + 1].contains_key(&next_pos) { continue }
+
+            queue.push_back(vertex);
+            visited.insert(vertex);
+        }
     }
 
     return usize::MAX;
@@ -134,4 +130,19 @@ pub fn solve(input: &str) -> (usize, usize) {
     let part_2 = search(size, top_left, bottom_right, back, &mut blizzards);
 
     (part_1, part_2)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"#.######
+#>>.<^<#
+#.<..<<#
+#>v.><>#
+#<^v^^>#
+######.#";
+    let output = solve(input);
+    assert_eq!(output.0, 18);
+    assert_eq!(output.1, 54);
 }
