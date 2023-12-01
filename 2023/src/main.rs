@@ -44,7 +44,7 @@ fn print_part(num: u8, mut output: String) {
     if output.ends_with('\n') {
         output.pop();
     }
-    let sep = if output.contains("\n") { '\n' } else { ' ' };
+    let sep = if output.contains('\n') { '\n' } else { ' ' };
     println!("{sep}{output}");
 }
 
