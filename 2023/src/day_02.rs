@@ -1,5 +1,6 @@
 pub fn solve(input: &str) -> (u32, u32) {
-    let mut sum = 0;
+    let mut id_sum = 0;
+    let mut power_sum = 0;
 
     for line in input.lines() {
         let bytes = line.as_bytes();
@@ -36,9 +37,11 @@ pub fn solve(input: &str) -> (u32, u32) {
         }
 
         if max_red <= 12 && max_green <= 13 && max_blue <= 14 {
-            sum += game_id;
+            id_sum += game_id;
         }
+
+        power_sum += max_red * max_green * max_blue;
     }
 
-    (sum, 0)
+    (id_sum, power_sum)
 }
