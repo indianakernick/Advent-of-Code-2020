@@ -27,6 +27,7 @@ macro_rules! declare_days {
 
 declare_days!(
     day_01
+    day_02
 );
 
 use clap::Parser;
