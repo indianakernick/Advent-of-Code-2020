@@ -4,36 +4,30 @@ pub fn solve(input: &str) -> (u32, u32) {
 
     for line in input.lines() {
         let bytes = line.as_bytes();
-        let mut index = 5;
+        let mut index = 5; // skip to game ID
 
-        let colon = bytes.iter().skip(index).position(|b| *b == b':').unwrap() + index;
-        let game_id = std::str::from_utf8(&bytes[index..colon]).unwrap().parse::<u32>().unwrap();
+        let colon = index_of(bytes, index, b':');
+        let game_id = parse(&bytes[index..colon]);
 
-        index = colon + 2;
+        index = colon + 2; // skip to first count
 
         let mut max_red = 0;
         let mut max_green = 0;
         let mut max_blue = 0;
 
         while index < bytes.len() {
-            let space = bytes.iter().skip(index).position(|b| *b == b' ').unwrap() + index;
-            let count = std::str::from_utf8(&bytes[index..space]).unwrap().parse::<u32>().unwrap();
+            let space = index_of(bytes, index, b' ');
+            let count = parse(&bytes[index..space]);
 
-            match bytes[space + 1] {
-                b'r' => {
-                    max_red = max_red.max(count);
-                    index = space + 6;
-                }
-                b'g' => {
-                    max_green = max_green.max(count);
-                    index = space + 8;
-                }
-                b'b' => {
-                    max_blue = max_blue.max(count);
-                    index = space + 7;
-                }
+            let (max, length) = match bytes[space + 1] {
+                b'r' => (&mut max_red, 6),
+                b'g' => (&mut max_green, 8),
+                b'b' => (&mut max_blue, 7),
                 _ => panic!("Invalid input"),
-            }
+            };
+
+            *max = (*max).max(count);
+            index = space + length; // skip past this count to next count
         }
 
         if max_red <= 12 && max_green <= 13 && max_blue <= 14 {
@@ -44,4 +38,35 @@ pub fn solve(input: &str) -> (u32, u32) {
     }
 
     (id_sum, power_sum)
+}
+
+fn index_of(bytes: &[u8], index: usize, needle: u8) -> usize {
+    bytes[index..]
+        .iter()
+        .position(|b| *b == needle)
+        .unwrap()
+        + index
+}
+
+fn parse(bytes: &[u8]) -> u32 {
+    bytes
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(i, b)| (*b - b'0') as u32 * 10u32.pow(i as u32))
+        .sum()
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green";
+    let output = solve(input);
+    assert_eq!(output.0, 8);
+    assert_eq!(output.1, 2286);
 }
