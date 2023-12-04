@@ -35,96 +35,98 @@ fn search(
 ) -> (u32, u32) {
     let mut part_number_sum = 0;
     let mut gear_ratio_sum = 0;
-    let mut is_part = false;
-    let mut digit_index = 0;
-    let mut part_number = 0;
-    let mut gear_pos = None;
+    let mut digits = Digits::default();
+    let mut symbols = Symbols::default();
+
+    let mut update_part_number_sum = |digits: &Digits, symbols: &Symbols| {
+        if symbols.is_part {
+            part_number_sum += digits.part_number;
+        }
+    };
+
+    let mut update_gear_ratio_sum = |digits: &Digits, symbols: &Symbols| {
+        if let Some(pos) = symbols.gear_pos {
+            let part_number = digits.part_number;
+            if let Some(other_part_number) = gears.get(&pos) {
+                gear_ratio_sum += part_number * other_part_number;
+            } else {
+                gears.insert(pos, part_number);
+            }
+        }
+    };
 
     for i in (0..curr.len()).rev() {
         if curr[i].is_ascii_digit() {
             if i + 1 < curr.len() {
-                is_part |= is_symbol(prev[i + 1]);
-                is_part |= is_symbol(curr[i + 1]);
-                is_part |= is_symbol(next[i + 1]);
-
-                if is_gear(prev[i + 1]) {
-                    gear_pos = Some((row - 1, i + 1));
-                }
-                if is_gear(curr[i + 1]) {
-                    gear_pos = Some((row, i + 1));
-                }
-                if is_gear(next[i + 1]) {
-                    gear_pos = Some((row + 1, i + 1));
-                }
+                symbols.handle_char(prev, row.wrapping_sub(1), i + 1);
+                symbols.handle_char(curr, row, i + 1);
+                symbols.handle_char(next, row + 1, i + 1);
             }
 
-            is_part |= is_symbol(prev[i]);
-            is_part |= is_symbol(next[i]);
+            symbols.handle_char(prev, row.wrapping_sub(1), i);
+            symbols.handle_char(next, row + 1, i);
 
-            if is_gear(prev[i]) {
-                gear_pos = Some((row - 1, i));
-            }
-            if is_gear(next[i]) {
-                gear_pos = Some((row + 1, i));
-            }
+            digits.handle_char(curr[i]);
+        } else if digits.has_digits() {
+            symbols.handle_char(prev, row.wrapping_sub(1), i);
+            symbols.handle_char(curr, row, i);
+            symbols.handle_char(next, row + 1, i);
 
-            part_number += (curr[i] - b'0') as u32 * 10u32.pow(digit_index);
-            digit_index += 1;
-        } else if digit_index > 0 {
-            is_part |= is_symbol(prev[i]);
-            is_part |= is_symbol(curr[i]);
-            is_part |= is_symbol(next[i]);
+            update_part_number_sum(&digits, &symbols);
+            update_gear_ratio_sum(&digits, &symbols);
 
-            if is_gear(prev[i]) {
-                gear_pos = Some((row - 1, i));
-            }
-            if is_gear(curr[i]) {
-                gear_pos = Some((row, i));
-            }
-            if is_gear(next[i]) {
-                gear_pos = Some((row + 1, i));
-            }
-
-            if let Some(pos) = gear_pos {
-                if let Some(other_part_number) = gears.get(&pos) {
-                    gear_ratio_sum += part_number * other_part_number;
-                } else {
-                    gears.insert(pos, part_number);
-                }
-            }
-
-            if is_part {
-                part_number_sum += part_number;
-            }
-
-            is_part = false;
-            digit_index = 0;
-            part_number = 0;
-            gear_pos = None;
+            digits = Digits::default();
+            symbols = Symbols::default();
         }
     }
 
-    if digit_index > 0 && is_part {
-        part_number_sum += part_number;
-    }
-
-    if let Some(pos) = gear_pos {
-        if let Some(other_part_number) = gears.get(&pos) {
-            gear_ratio_sum += part_number * other_part_number;
-        } else {
-            gears.insert(pos, part_number);
-        }
-    }
+    update_part_number_sum(&digits, &symbols);
+    update_gear_ratio_sum(&digits, &symbols);
 
     (part_number_sum, gear_ratio_sum)
 }
 
-fn is_symbol(ch: u8) -> bool {
-    !ch.is_ascii_digit() && ch != b'.'
+#[derive(Default)]
+struct Digits {
+    part_number: u32,
+    digit_index: u32,
 }
 
-fn is_gear(ch: u8) -> bool {
-    ch == b'*'
+impl Digits {
+    fn handle_char(&mut self, ch: u8) {
+        self.part_number += (ch - b'0') as u32 * 10u32.pow(self.digit_index);
+        self.digit_index += 1;
+    }
+
+    fn has_digits(&self) -> bool {
+        self.digit_index > 0
+    }
+}
+
+#[derive(Default)]
+struct Symbols {
+    is_part: bool,
+    gear_pos: Option<(usize, usize)>,
+}
+
+impl Symbols {
+    fn handle_char(&mut self, line: &[u8], row: usize, col: usize) {
+        let ch = line[col];
+        if Self::is_gear(ch) {
+            self.gear_pos = Some((row, col));
+            self.is_part = true;
+        } else {
+            self.is_part |= Self::is_symbol(ch);
+        }
+    }
+
+    fn is_symbol(ch: u8) -> bool {
+        !ch.is_ascii_digit() && ch != b'.'
+    }
+
+    fn is_gear(ch: u8) -> bool {
+        ch == b'*'
+    }
 }
 
 fn add_assign(lhs: &mut (u32, u32), rhs: (u32, u32)) {
