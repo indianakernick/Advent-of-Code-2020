@@ -38,8 +38,7 @@ fn search(
     let mut is_part = false;
     let mut digit_index = 0;
     let mut part_number = 0;
-    let mut first_gear_pos = None;
-    let mut second_gear_pos = None;
+    let mut gear_pos = None;
 
     for i in (0..curr.len()).rev() {
         if curr[i].is_ascii_digit() {
@@ -49,14 +48,13 @@ fn search(
                 is_part |= is_symbol(next[i + 1]);
 
                 if is_gear(prev[i + 1]) {
-                    second_gear_pos = Some((row - 1, i + 1));
+                    gear_pos = Some((row - 1, i + 1));
                 }
                 if is_gear(curr[i + 1]) {
-                    first_gear_pos = Some((row, i + 1));
-                    second_gear_pos = Some((row, i + 1));
+                    gear_pos = Some((row, i + 1));
                 }
                 if is_gear(next[i + 1]) {
-                    first_gear_pos = Some((row + 1, i + 1));
+                    gear_pos = Some((row + 1, i + 1));
                 }
             }
 
@@ -64,10 +62,10 @@ fn search(
             is_part |= is_symbol(next[i]);
 
             if is_gear(prev[i]) {
-                second_gear_pos = Some((row - 1, i));
+                gear_pos = Some((row - 1, i));
             }
             if is_gear(next[i]) {
-                first_gear_pos = Some((row + 1, i));
+                gear_pos = Some((row + 1, i));
             }
 
             part_number += (curr[i] - b'0') as u32 * 10u32.pow(digit_index);
@@ -78,24 +76,21 @@ fn search(
             is_part |= is_symbol(next[i]);
 
             if is_gear(prev[i]) {
-                second_gear_pos = Some((row - 1, i));
+                gear_pos = Some((row - 1, i));
             }
             if is_gear(curr[i]) {
-                first_gear_pos = Some((row, i));
-                second_gear_pos = Some((row, i));
+                gear_pos = Some((row, i));
             }
             if is_gear(next[i]) {
-                first_gear_pos = Some((row + 1, i));
+                gear_pos = Some((row + 1, i));
             }
 
-            if let Some(pos) = second_gear_pos {
+            if let Some(pos) = gear_pos {
                 if let Some(other_part_number) = gears.get(&pos) {
                     gear_ratio_sum += part_number * other_part_number;
+                } else {
+                    gears.insert(pos, part_number);
                 }
-            }
-
-            if let Some(pos) = first_gear_pos {
-                gears.insert(pos, part_number);
             }
 
             if is_part {
@@ -105,8 +100,7 @@ fn search(
             is_part = false;
             digit_index = 0;
             part_number = 0;
-            first_gear_pos = None;
-            second_gear_pos = None;
+            gear_pos = None;
         }
     }
 
@@ -114,14 +108,12 @@ fn search(
         part_number_sum += part_number;
     }
 
-    if let Some(pos) = second_gear_pos {
+    if let Some(pos) = gear_pos {
         if let Some(other_part_number) = gears.get(&pos) {
             gear_ratio_sum += part_number * other_part_number;
+        } else {
+            gears.insert(pos, part_number);
         }
-    }
-
-    if let Some(pos) = first_gear_pos {
-        gears.insert(pos, part_number);
     }
 
     (part_number_sum, gear_ratio_sum)
