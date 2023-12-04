@@ -1,8 +1,10 @@
 use std::collections::HashSet;
 
 pub fn solve(input: &str) -> (u32, u32) {
-    let mut winning_set = HashSet::new();
     let mut points_sum = 0;
+    let mut winning_set = HashSet::new();
+    let mut copy_card_counts = Vec::<u32>::new();
+    let mut original_card_count = 0;
 
     for line in input.lines() {
         let bytes = line.as_bytes();
@@ -28,12 +30,40 @@ pub fn solve(input: &str) -> (u32, u32) {
         }
 
         winning_set.clear();
+
         if winning_count != 0 {
             points_sum += 1 << (winning_count - 1);
         }
+
+        let new_length = original_card_count + winning_count + 1;
+
+        if new_length > copy_card_counts.len() {
+            copy_card_counts.reserve(new_length - copy_card_counts.len());
+        }
+
+        let multiplier = if original_card_count < copy_card_counts.len() {
+            1 + copy_card_counts[original_card_count]
+        } else {
+            1
+        };
+
+        for card in 0..winning_count {
+            let card_index = original_card_count + card + 1;
+
+            if card_index < copy_card_counts.len() {
+                copy_card_counts[card_index] += multiplier;
+                continue;
+            }
+            if card_index > copy_card_counts.len() {
+                copy_card_counts.push(0);
+            }
+            copy_card_counts.push(multiplier);
+        }
+
+        original_card_count += 1;
     }
 
-    (points_sum, 0)
+    (points_sum, copy_card_counts.iter().sum::<u32>() + original_card_count as u32)
 }
 
 fn get_value(s: &[u8]) -> u8 {
@@ -58,4 +88,5 @@ Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
 Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11";
     let output = solve(input);
     assert_eq!(output.0, 13);
+    assert_eq!(output.1, 30);
 }
