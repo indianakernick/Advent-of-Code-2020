@@ -27,24 +27,32 @@ pub fn solve(input: &str) -> (u64, u64) {
         }
     }
 
-    let mut min_location = u64::MAX;
+    let mut min_location_1 = u64::MAX;
+    let mut min_location_2 = u64::MAX;
 
     for seed in seeds.iter() {
-        let mut value = *seed;
-
-        for mapping in mappings.iter() {
-            for range in mapping.iter() {
-                if value >= range.source_start && value < range.source_start + range.length {
-                    value = value - range.source_start + range.destination_start;
-                    break;
-                }
-            }
-        }
-
-        min_location = min_location.min(value);
+        min_location_1 = min_location_1.min(map_value(*seed, &mappings));
     }
 
-    (min_location, 0)
+    for pair in seeds.chunks(2) {
+        for seed in pair[0]..pair[0] + pair[1] {
+            min_location_2 = min_location_2.min(map_value(seed, &mappings));
+        }
+    }
+
+    (min_location_1, min_location_2)
+}
+
+fn map_value(mut value: u64, mappings: &Vec<Vec<MapRange>>) -> u64 {
+    for mapping in mappings.iter() {
+        for range in mapping.iter() {
+            if value >= range.source_start && value < range.source_start + range.length {
+                value = value - range.source_start + range.destination_start;
+                break;
+            }
+        }
+    }
+    value
 }
 
 fn parse_number_list(s: &[u8]) -> Vec<u64> {
