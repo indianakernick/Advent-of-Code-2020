@@ -27,16 +27,31 @@ pub fn solve(input: &str) -> (u64, u64) {
         }
     }
 
-    let mut min = (u64::MAX, u64::MAX);
+    let mut min = (u64::MAX, 0);
 
     for seed in seeds.iter() {
         min.0 = min.0.min(map_value(*seed, &mappings));
     }
 
-    for pair in seeds.chunks(2) {
-        for seed in pair[0]..pair[0] + pair[1] {
-            min.1 = min.1.min(map_value(seed, &mappings));
+    'location: loop {
+        let mut value = min.1;
+
+        for mapping in mappings.iter().rev() {
+            for range in mapping.iter() {
+                if value >= range.destination_start && value < range.destination_start + range.length {
+                    value = value - range.destination_start + range.source_start;
+                    break;
+                }
+            }
         }
+
+        for pair in seeds.chunks(2) {
+            if value >= pair[0] && value < pair[0] + pair[1] {
+                break 'location;
+            }
+        }
+
+        min.1 += 1;
     }
 
     min
