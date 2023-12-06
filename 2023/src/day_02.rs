@@ -1,3 +1,5 @@
+use crate::common;
+
 pub fn solve(input: &str) -> (u32, u32) {
     let mut id_sum = 0;
     let mut power_sum = 0;
@@ -6,8 +8,8 @@ pub fn solve(input: &str) -> (u32, u32) {
         let bytes = line.as_bytes();
         let mut index = 5; // skip to game ID
 
-        let colon = index_of(bytes, index, b':');
-        let game_id = parse(&bytes[index..colon]);
+        let colon = common::index_of_after(bytes, b':', index);
+        let game_id = common::parse_u32(&bytes[index..colon]);
 
         index = colon + 2; // skip to first count
 
@@ -16,8 +18,8 @@ pub fn solve(input: &str) -> (u32, u32) {
         let mut max_blue = 0;
 
         while index < bytes.len() {
-            let space = index_of(bytes, index, b' ');
-            let count = parse(&bytes[index..space]);
+            let space = common::index_of_after(bytes, b' ', index);
+            let count = common::parse_u32(&bytes[index..space]);
 
             let (max, length) = match bytes[space + 1] {
                 b'r' => (&mut max_red, 6),
@@ -38,23 +40,6 @@ pub fn solve(input: &str) -> (u32, u32) {
     }
 
     (id_sum, power_sum)
-}
-
-fn index_of(bytes: &[u8], index: usize, needle: u8) -> usize {
-    bytes[index..]
-        .iter()
-        .position(|b| *b == needle)
-        .unwrap()
-        + index
-}
-
-fn parse(bytes: &[u8]) -> u32 {
-    bytes
-        .iter()
-        .rev()
-        .enumerate()
-        .map(|(i, b)| (*b - b'0') as u32 * 10u32.pow(i as u32))
-        .sum()
 }
 
 #[cfg(test)]

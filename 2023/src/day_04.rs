@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::common;
+
 pub fn solve(input: &str) -> (u32, u32) {
     let mut points_sum = 0;
     let mut winning_set = HashSet::new();
@@ -47,7 +49,7 @@ pub fn solve(input: &str) -> (u32, u32) {
 }
 
 fn count_winners(line: &[u8], winning_set: &mut HashSet<u8>) -> usize {
-    let colon = line.iter().position(|b| *b == b':').unwrap();
+    let colon = common::index_of(line, b':');
     let mut index = colon + 2;
 
     while line[index] != b'|' {

@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::common;
+
 pub fn solve(input: &str) -> (u32, u32) {
     let mut sum = (0, 0);
     let mut lines = input.lines();
@@ -9,19 +11,19 @@ pub fn solve(input: &str) -> (u32, u32) {
     let mut gears = HashMap::new();
     let mut row = 2;
 
-    add_assign(&mut sum, search(prev, prev, curr, 0, &mut gears));
-    add_assign(&mut sum, search(prev, curr, next, 1, &mut gears));
+    common::add_assign(&mut sum, search(prev, prev, curr, 0, &mut gears));
+    common::add_assign(&mut sum, search(prev, curr, next, 1, &mut gears));
 
     while let Some(next_next) = lines.next() {
         prev = curr;
         curr = next;
         next = next_next.as_bytes();
 
-        add_assign(&mut sum, search(prev, curr, next, row, &mut gears));
+        common::add_assign(&mut sum, search(prev, curr, next, row, &mut gears));
         row += 1;
     }
 
-    add_assign(&mut sum, search(curr, next, next, row, &mut gears));
+    common::add_assign(&mut sum, search(curr, next, next, row, &mut gears));
 
     sum
 }
@@ -127,11 +129,6 @@ impl Symbols {
     fn is_gear(ch: u8) -> bool {
         ch == b'*'
     }
-}
-
-fn add_assign(lhs: &mut (u32, u32), rhs: (u32, u32)) {
-    lhs.0 += rhs.0;
-    lhs.1 += rhs.1;
 }
 
 #[cfg(test)]

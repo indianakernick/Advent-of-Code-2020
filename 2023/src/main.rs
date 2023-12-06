@@ -1,3 +1,5 @@
+mod common;
+
 macro_rules! declare_days {
     ($($day:ident)+) => {
         $(mod $day;)+

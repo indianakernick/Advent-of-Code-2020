@@ -1,8 +1,11 @@
+use crate::common;
+
 pub fn solve(input: &str) -> (u64, u64) {
     let mut lines = input.lines();
 
     let seeds_line = lines.next().unwrap().as_bytes();
-    let seeds = parse_number_list(&seeds_line[7..]);
+    let seeds = common::parse_delimited_list(&seeds_line[7..], b' ')
+        .collect::<Vec<_>>();
     let mut mappings = Vec::new();
 
     lines.next().unwrap();
@@ -69,42 +72,13 @@ fn map_value(mut value: u64, mappings: &Vec<Vec<MapRange>>) -> u64 {
     value
 }
 
-fn parse_number_list(s: &[u8]) -> Vec<u64> {
-    let mut list = Vec::new();
-
-    let mut index = 0;
-    let mut number_start = 0;
-
-    while index < s.len() {
-        if s[index] == b' ' {
-            list.push(parse_number(&s[number_start..index]));
-            number_start = index + 1;
-        }
-
-        index += 1;
-    }
-
-    list.push(parse_number(&s[number_start..index]));
-
-    list
-}
-
-fn parse_range(s: &[u8]) -> MapRange {
-    let vec = parse_number_list(s);
+fn parse_range(bytes: &[u8]) -> MapRange {
+    let mut iter = common::parse_delimited_list(bytes, b' ');
     MapRange {
-        destination_start: vec[0],
-        source_start: vec[1],
-        length: vec[2],
+        destination_start: iter.next().unwrap(),
+        source_start: iter.next().unwrap(),
+        length: iter.next().unwrap(),
     }
-}
-
-fn parse_number(s: &[u8]) -> u64 {
-    s
-        .iter()
-        .rev()
-        .enumerate()
-        .map(|(i, b)| (*b - b'0') as u64 * 10u64.pow(i as u32))
-        .sum()
 }
 
 struct MapRange {
