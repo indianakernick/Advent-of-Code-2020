@@ -36,16 +36,27 @@ pub fn solve(input: &str) -> (u32, u32) {
     let mut product = 1;
 
     for (time, distance) in races.iter() {
-        let mut win_count = 0;
-
-        for button_time in 1..*time {
-            if button_time * (time - button_time) > *distance {
-                win_count += 1;
-            }
-        }
-
-        product *= win_count;
+        product *= (1..*time)
+            .filter(|button_time| button_time * (time - button_time) > *distance)
+            .count() as u32;
     }
 
-    (product, 0)
+    let time = common::parse_u64(time_line
+        .iter()
+        .copied()
+        .filter(u8::is_ascii_digit)
+        .collect::<Vec<_>>()
+        .as_slice());
+    let distance = common::parse_u64(distance_line
+        .iter()
+        .copied()
+        .filter(u8::is_ascii_digit)
+        .collect::<Vec<_>>()
+        .as_slice());
+
+    let win_count = (1..time)
+        .filter(|button_time| button_time * (time - button_time) > distance)
+        .count() as u32;
+
+    (product, win_count)
 }
