@@ -31,25 +31,16 @@ fn score_sum(hands: &Vec<(Hand, u32)>) -> u32 {
 }
 
 fn compare<const WILD: bool>(a_hand: Hand, b_hand: Hand) -> Ordering {
-    let a_type = hand_type::<WILD>(a_hand);
-    let b_type = hand_type::<WILD>(b_hand);
-    let cmp_type = a_type.cmp(&b_type);
+    let cmp_type = hand_type::<WILD>(a_hand).cmp(&hand_type::<WILD>(b_hand));
 
-    if !cmp_type.is_eq() {
+    if cmp_type.is_ne() {
         return cmp_type;
     }
 
-    for (a_card, b_card) in a_hand.iter().zip(b_hand.iter()) {
-        let a_strength = card_strength::<WILD>(*a_card);
-        let b_strength = card_strength::<WILD>(*b_card);
-        let cmp_strength = a_strength.cmp(&b_strength);
+    let a_strength = a_hand.iter().copied().map(card_strength::<WILD>);
+    let b_strength = b_hand.iter().copied().map(card_strength::<WILD>);
 
-        if !cmp_strength.is_eq() {
-            return cmp_strength;
-        }
-    }
-
-    Ordering::Equal
+    a_strength.cmp(b_strength)
 }
 
 fn hand_type<const WILD: bool>(hand: Hand) -> HandType {
@@ -125,8 +116,6 @@ fn card_strength<const WILD: bool>(card: u8) -> u8 {
     }
 }
 
-const WILD_CARD: u8 = b'J';
-
 const CARD_STRENGTH: [u8; 13] = [
     b'2',
     b'3',
@@ -142,6 +131,8 @@ const CARD_STRENGTH: [u8; 13] = [
     b'K',
     b'A',
 ];
+
+const WILD_CARD: u8 = b'J';
 
 #[cfg(test)]
 #[test]
