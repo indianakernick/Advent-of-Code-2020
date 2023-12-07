@@ -1,9 +1,9 @@
 use crate::common;
 
 pub fn solve(input: &str) -> (u64, u64) {
-    let mut lines = input.lines();
+    let mut lines = common::lines_iter(input);
 
-    let seeds_line = lines.next().unwrap().as_bytes();
+    let seeds_line = lines.next().unwrap();
     let seeds = common::parse_delimited_list(&seeds_line[7..], b' ')
         .collect::<Vec<_>>();
     let mut mappings = Vec::new();
@@ -18,7 +18,7 @@ pub fn solve(input: &str) -> (u64, u64) {
         loop {
             if let Some(range_line) = lines.next() {
                 if range_line.len() > 0 {
-                    ranges.push(parse_range(range_line.as_bytes()));
+                    ranges.push(parse_range(range_line));
                 } else {
                     mappings.push(ranges);
                     break;

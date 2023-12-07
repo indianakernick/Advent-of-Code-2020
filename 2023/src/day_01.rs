@@ -1,7 +1,9 @@
+use crate::common;
+
 pub fn solve(input: &str) -> (u32, u32) {
     let mut sum = (0, 0);
 
-    for line in input.lines() {
+    for line in common::lines_iter(input) {
         sum.0 += first_last_sum::<false>(line);
         sum.1 += first_last_sum::<true>(line);
     }
@@ -9,23 +11,23 @@ pub fn solve(input: &str) -> (u32, u32) {
     sum
 }
 
-const WORDS: [&str; 9] = [
-    "one",
-    "two",
-    "three",
-    "four",
-    "five",
-    "six",
-    "seven",
-    "eight",
-    "nine",
+const WORDS: [&[u8]; 9] = [
+    b"one",
+    b"two",
+    b"three",
+    b"four",
+    b"five",
+    b"six",
+    b"seven",
+    b"eight",
+    b"nine",
 ];
 
-fn first_last_sum<const USE_WORDS: bool>(line: &str) -> u32 {
+fn first_last_sum<const USE_WORDS: bool>(line: &[u8]) -> u32 {
     let mut first = None;
     let mut last = None;
 
-    for (char_idx, char) in line.as_bytes().iter().enumerate() {
+    for (char_idx, char) in line.iter().enumerate() {
         let mut digit = None;
 
         if char.is_ascii_digit() {

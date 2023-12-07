@@ -1,3 +1,10 @@
+pub fn lines_iter(str: &str) -> impl Iterator<Item = &[u8]> {
+    str
+        .as_bytes()
+        .split_inclusive(|b| *b == b'\n')
+        .map(|bytes| bytes.strip_suffix(&[b'\n']).unwrap_or(bytes))
+}
+
 pub fn index_of(bytes: &[u8], needle: u8) -> usize {
     bytes
         .iter()

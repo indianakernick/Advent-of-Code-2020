@@ -1,11 +1,11 @@
 use crate::common;
 
 pub fn solve(input: &str) -> (u32, u32) {
-    let mut lines = input.lines();
+    let mut lines = common::lines_iter(input);
     let mut races = Vec::new();
 
-    let time_line = lines.next().unwrap().as_bytes();
-    let distance_line = lines.next().unwrap().as_bytes();
+    let time_line = lines.next().unwrap();
+    let distance_line = lines.next().unwrap();
     let mut index = 0;
 
     while index < time_line.len() {
@@ -59,4 +59,15 @@ pub fn solve(input: &str) -> (u32, u32) {
         .count() as u32;
 
     (product, win_count)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"Time:      7  15   30
+Distance:  9  40  200";
+    let output = solve(input);
+    assert_eq!(output.0, 288);
+    assert_eq!(output.1, 71503);
 }

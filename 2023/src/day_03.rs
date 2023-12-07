@@ -4,10 +4,10 @@ use crate::common;
 
 pub fn solve(input: &str) -> (u32, u32) {
     let mut sum = (0, 0);
-    let mut lines = input.lines();
-    let mut prev = lines.next().unwrap().as_bytes();
-    let mut curr = lines.next().unwrap().as_bytes();
-    let mut next = lines.next().unwrap().as_bytes();
+    let mut lines = common::lines_iter(input);
+    let mut prev = lines.next().unwrap();
+    let mut curr = lines.next().unwrap();
+    let mut next = lines.next().unwrap();
     let mut gears = HashMap::new();
     let mut row = 2;
 
@@ -17,7 +17,7 @@ pub fn solve(input: &str) -> (u32, u32) {
     while let Some(next_next) = lines.next() {
         prev = curr;
         curr = next;
-        next = next_next.as_bytes();
+        next = next_next;
 
         common::add_assign(&mut sum, search(prev, curr, next, row, &mut gears));
         row += 1;

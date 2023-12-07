@@ -8,8 +8,8 @@ pub fn solve(input: &str) -> (u32, u32) {
     let mut card_copy_counts = Vec::<u32>::new();
     let mut card_index = 0;
 
-    for line in input.lines() {
-        let winning_count = count_winners(line.as_bytes(), &mut winning_set);
+    for line in common::lines_iter(input) {
+        let winning_count = count_winners(line, &mut winning_set);
 
         if winning_count != 0 {
             points_sum += 1 << (winning_count - 1);

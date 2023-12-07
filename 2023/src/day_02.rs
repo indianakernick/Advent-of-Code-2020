@@ -4,8 +4,7 @@ pub fn solve(input: &str) -> (u32, u32) {
     let mut id_sum = 0;
     let mut power_sum = 0;
 
-    for line in input.lines() {
-        let bytes = line.as_bytes();
+    for bytes in common::lines_iter(input) {
         let mut index = 5; // skip to game ID
 
         let colon = common::index_of_after(bytes, b':', index);
