@@ -2,14 +2,14 @@ use std::collections::HashMap;
 
 use crate::common;
 
-pub fn solve(input: &str) -> (u32, u64) {
+pub fn solve(input: &str) -> (u64, u64) {
     let mut lines = common::lines_iter(input);
 
     let instructions = lines.next().unwrap();
 
     lines.next().unwrap();
 
-    let mut network = HashMap::<[u8; 3], ([u8; 3], [u8; 3])>::new();
+    let mut network = Network::new();
 
     for line in lines {
         network.insert(
@@ -18,80 +18,62 @@ pub fn solve(input: &str) -> (u32, u64) {
         );
     }
 
-    let mut node_1 = b"AAA";
-    let mut count_1 = 0;
-
-    if network.contains_key(node_1) {
-        while node_1 != b"ZZZ" {
-            for instr in instructions.iter() {
-                let (left, right) = network.get(node_1).unwrap();
-                node_1 = if *instr == b'L' {
-                    left
-                } else {
-                    right
-                };
-                count_1 += 1;
-            }
-        }
-    }
-
-    let nodes_2 = network
+    let network = &network;
+    let nodes = network
         .keys()
         .filter(|node| node[2] == b'A')
         .copied()
         .collect::<Vec<_>>();
 
-    let count_2 = std::thread::scope(|s| {
+    std::thread::scope(|s| {
         let mut threads = Vec::new();
 
-        for i in 0..nodes_2.len() {
-            let mut node = nodes_2[i];
-            let network = &network;
+        threads.push(s.spawn(|| {
+            if network.contains_key(b"AAA") {
+                count_steps::<true>(network, instructions, *b"AAA")
+            } else {
+                0
+            }
+        }));
 
+        for node in nodes {
             threads.push(s.spawn(move || {
-                let mut count = 0u32;
-
-                'repeat: loop {
-                    for instr in instructions.iter() {
-                        let (left, right) = network.get(&node).unwrap();
-
-                        node = if *instr == b'L' {
-                            *left
-                        } else {
-                            *right
-                        };
-
-                        count += 1;
-
-                        if node[2] == b'Z' {
-                            break 'repeat;
-                        }
-                    }
-                }
-
-                count
+                count_steps::<false>(network, instructions, node)
             }));
         }
 
-        let mut lcm = 1;
+        let mut iter = threads.into_iter();
+        let count_1 = iter.next().unwrap().join().unwrap();
+        let count_2 = iter.map(|t| t.join().unwrap()).reduce(common::lcm).unwrap();
 
-        for thread in threads.into_iter() {
-            let count = thread.join().unwrap() as u64;
-            lcm = lcm * count / gcd(lcm, count);
-        }
-
-        lcm
-    });
-
-    (count_1, count_2)
+        (count_1, count_2)
+    })
 }
 
-fn gcd(a: u64, b: u64) -> u64 {
-    if b == 0 {
-        a
-    } else {
-        gcd(b, a % b)
+type Node = [u8; 3];
+type Network = HashMap<Node, (Node, Node)>;
+
+fn count_steps<const FULL_END: bool>(
+    network: &Network,
+    instructions: &[u8],
+    mut node: Node,
+) -> u64 {
+    let mut count = 0;
+
+    'repeat: loop {
+        for instr in instructions.iter() {
+            let (left, right) = network.get(&node).unwrap();
+
+            node = if *instr == b'L' { *left } else { *right };
+            count += 1;
+
+            if (FULL_END && node == *b"ZZZ") || (!FULL_END && node[2] == b'Z') {
+                break 'repeat;
+            }
+        }
     }
+
+    count
 }
 
 #[cfg(test)]
