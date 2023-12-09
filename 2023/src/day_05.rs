@@ -4,7 +4,9 @@ pub fn solve(input: &str) -> (u64, u64) {
     let mut lines = common::lines_iter(input);
 
     let seeds_line = lines.next().unwrap();
-    let seeds = common::parse_delimited_list(&seeds_line[7..], b' ')
+    let seeds = seeds_line[7..]
+        .split(|b| *b == b' ')
+        .map(common::parse_u64)
         .collect::<Vec<_>>();
     let mut mappings = Vec::new();
 
@@ -73,7 +75,7 @@ fn map_value(mut value: u64, mappings: &Vec<Vec<MapRange>>) -> u64 {
 }
 
 fn parse_range(bytes: &[u8]) -> MapRange {
-    let mut iter = common::parse_delimited_list(bytes, b' ');
+    let mut iter = bytes.split(|b| *b == b' ').map(common::parse_u64);
     MapRange {
         destination_start: iter.next().unwrap(),
         source_start: iter.next().unwrap(),
