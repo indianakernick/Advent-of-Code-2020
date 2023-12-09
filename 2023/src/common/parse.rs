@@ -31,9 +31,13 @@ pub fn parse_u32(bytes: &[u8]) -> u32 {
 
 pub fn parse_i32(bytes: &[u8]) -> i32 {
     if bytes[0] == b'-' {
-        -(parse_u32(&bytes[1..]) as i32)
+        let result = -(parse_u32(&bytes[1..]) as i32);
+        debug_assert!(result < 0, "underflow");
+        result
     } else {
-        parse_u32(bytes) as i32
+        let result = parse_u32(bytes) as i32;
+        debug_assert!(result >= 0, "overflow");
+        result
     }
 }
 
