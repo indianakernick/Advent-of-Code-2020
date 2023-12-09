@@ -1,7 +1,8 @@
 use crate::common;
 
-pub fn solve(input: &str) -> (i32, u64) {
-    let mut sum = 0;
+pub fn solve(input: &str) -> (i32, i32) {
+    let mut sum_1 = 0;
+    let mut sum_2 = 0;
 
     for line in common::lines_iter(input) {
         let mut index = 0;
@@ -30,8 +31,18 @@ pub fn solve(input: &str) -> (i32, u64) {
             sequences[i].push(current_last + previous_last);
         }
 
-        sum += sequences[0].last().unwrap();
+        sum_1 += sequences[0].last().unwrap();
+
+        for i in (0..sequences.len() - 1).rev() {
+            let current = &sequences[i];
+            let current_last = current[0];
+            let previous = &sequences[i + 1];
+            let previous_last = previous[0];
+            sequences[i].insert(0, current_last - previous_last);
+        }
+
+        sum_2 += sequences[0][0];
     }
 
-    (sum, 0)
+    (sum_1, sum_2)
 }
