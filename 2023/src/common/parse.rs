@@ -29,6 +29,14 @@ pub fn parse_u32(bytes: &[u8]) -> u32 {
         .sum()
 }
 
+pub fn parse_i32(bytes: &[u8]) -> i32 {
+    if bytes[0] == b'-' {
+        -(parse_u32(&bytes[1..]) as i32)
+    } else {
+        parse_u32(bytes) as i32
+    }
+}
+
 const POW_10_32: [u32; 10] = [
     1,
     10,
