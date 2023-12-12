@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::common;
 
-pub fn solve(input: &str) -> (u32, u32) {
+pub fn solve(input: &str) -> (u64, u64) {
     let mut galaxies = HashSet::<(u32, u32)>::new();
     let mut lines = common::lines_iter(input).peekable();
     let first_line = lines.peek().unwrap();
@@ -31,33 +31,38 @@ pub fn solve(input: &str) -> (u32, u32) {
         height += 1;
     }
 
-    let mut sum = 0;
+    let mut base_sum = 0;
+    let mut empty_sum = 0;
 
     for a in galaxies.iter() {
         for b in galaxies.iter() {
+            if b.0 < a.0 || (a.0 == b.0 && b.1 < a.1) || a == b {
+                continue;
+            }
+
             let min_x = a.0.min(b.0);
             let max_x = a.0.max(b.0);
             let min_y = a.1.min(b.1);
             let max_y = a.1.max(b.1);
 
-            let mut dist = (max_x - min_x) + (max_y - min_y);
+            base_sum += (max_x - min_x) + (max_y - min_y);
 
-            for x in min_x..max_x {
+            for x in min_x + 1..max_x {
                 if empty_columns.contains(&x) {
-                    dist += 1;
+                    empty_sum += 1;
                 }
             }
 
-            for y in min_y..max_y {
+            for y in min_y + 1..max_y {
                 if empty_rows.contains(&y) {
-                    dist += 1;
+                    empty_sum += 1;
                 }
             }
-
-            sum += dist;
         }
     }
 
-    // We're visiting each pair twice.
-    (sum / 2, 0)
+    let base_sum = base_sum as u64;
+    let empty_sum = empty_sum as u64;
+
+    (base_sum + empty_sum, base_sum + 999999 * empty_sum)
 }
