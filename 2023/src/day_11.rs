@@ -10,14 +10,11 @@ pub fn distance_sums(input: &str, empty_size: u64) -> (u64, u64) {
     let mut lines = common::lines_iter(input).peekable();
     let first_line = lines.peek().unwrap();
 
-    let width = first_line.len();
-    let mut height = 0;
+    let mut galaxies = Vec::<(u32, u32)>::new();
+    let mut empty_rows = Vec::<u32>::new();
+    let mut empty_columns = (0..first_line.len() as u32).collect::<HashSet<_>>();
 
-    let mut galaxies = HashSet::<(u32, u32)>::new();
-    let mut empty_rows = HashSet::<u32>::new();
-    let mut empty_columns = (0..width as u32).collect::<HashSet<_>>();
-
-    for line in lines {
+    for (y, line) in lines.enumerate() {
         let mut empty_row = true;
 
         for (x, ch) in line.iter().enumerate() {
@@ -25,25 +22,28 @@ pub fn distance_sums(input: &str, empty_size: u64) -> (u64, u64) {
                 let x = x as u32;
                 empty_row = false;
                 empty_columns.remove(&x);
-                galaxies.insert((x, height));
+                galaxies.push((x, y as u32));
             }
         }
 
         if empty_row {
-            empty_rows.insert(height);
+            empty_rows.push(y as u32);
         }
-
-        height += 1;
     }
+
+    let mut empty_columns = Vec::from_iter(empty_columns.iter().copied());
+
+    empty_columns.sort_unstable();
+    empty_rows.sort_unstable();
 
     let mut base_sum = 0;
     let mut empty_sum = 0;
 
-    for a in galaxies.iter() {
-        for b in galaxies.iter() {
-            if b.0 < a.0 || (a.0 == b.0 && b.1 < a.1) || a == b {
-                continue;
-            }
+    for a_i in 0..galaxies.len() {
+        let a = galaxies[a_i];
+
+        for b_i in a_i + 1..galaxies.len() {
+            let b = galaxies[b_i];
 
             let min_x = a.0.min(b.0);
             let max_x = a.0.max(b.0);
@@ -52,16 +52,24 @@ pub fn distance_sums(input: &str, empty_size: u64) -> (u64, u64) {
 
             base_sum += (max_x - min_x) + (max_y - min_y);
 
-            for x in min_x + 1..max_x {
-                if empty_columns.contains(&x) {
-                    empty_sum += 1;
+            for x in empty_columns.iter() {
+                if *x < min_x {
+                    continue;
                 }
+                if *x > max_x {
+                    break;
+                }
+                empty_sum += 1;
             }
 
-            for y in min_y + 1..max_y {
-                if empty_rows.contains(&y) {
-                    empty_sum += 1;
+            for y in empty_rows.iter() {
+                if *y < min_y {
+                    continue;
                 }
+                if *y > max_y {
+                    break;
+                }
+                empty_sum += 1;
             }
         }
     }
