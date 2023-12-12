@@ -3,12 +3,17 @@ use std::collections::HashSet;
 use crate::common;
 
 pub fn solve(input: &str) -> (u64, u64) {
-    let mut galaxies = HashSet::<(u32, u32)>::new();
+    distance_sums(input, 1000000)
+}
+
+pub fn distance_sums(input: &str, empty_size: u64) -> (u64, u64) {
     let mut lines = common::lines_iter(input).peekable();
     let first_line = lines.peek().unwrap();
 
     let width = first_line.len();
     let mut height = 0;
+
+    let mut galaxies = HashSet::<(u32, u32)>::new();
     let mut empty_rows = HashSet::<u32>::new();
     let mut empty_columns = (0..width as u32).collect::<HashSet<_>>();
 
@@ -64,5 +69,24 @@ pub fn solve(input: &str) -> (u64, u64) {
     let base_sum = base_sum as u64;
     let empty_sum = empty_sum as u64;
 
-    (base_sum + empty_sum, base_sum + 999999 * empty_sum)
+    (base_sum + empty_sum, base_sum + (empty_size - 1) * empty_sum)
+}
+
+#[cfg(test)]
+#[test]
+fn example() {
+    let input =
+"...#......
+.......#..
+#.........
+..........
+......#...
+.#........
+.........#
+..........
+.......#..
+#...#.....";
+    let output = distance_sums(input, 10);
+    assert_eq!(output.0, 374);
+    assert_eq!(output.1, 1030);
 }
