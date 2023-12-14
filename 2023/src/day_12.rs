@@ -2,61 +2,79 @@ use crate::common;
 
 pub fn solve(input: &str) -> (u32, u32) {
     let mut sum = 0;
-    let mut arrangement = Vec::new();
+    let mut arrangement_spec = Vec::new();
     let mut expected_group_sizes = Vec::new();
-    let mut actual_group_sizes = Vec::new();
 
     for line in common::lines_iter(input) {
         let space = line.iter().position(|ch| *ch == b' ').unwrap();
-        let arrangement_spec = &line[..space];
+
+        arrangement_spec.clear();
+        arrangement_spec.push(line[0]);
+
+        for i in 1..space {
+            if line[i - 1] == b'.' && line[i] == b'.' {
+                continue;
+            }
+            arrangement_spec.push(line[i]);
+        }
 
         expected_group_sizes.clear();
         expected_group_sizes.extend(line[space + 1..]
             .split(|ch| *ch == b',')
             .map(common::parse_u32));
 
-        let unknown_count = arrangement_spec.iter().filter(|ch| **ch == b'?').count();
-        let arrangement_count = 1u32 << unknown_count;
-
-        for arrangement_index in 0..arrangement_count {
-            arrangement.clear();
-
-            let mut bit_index = 0;
-
-            arrangement.extend(arrangement_spec.iter().map(|spring| match spring {
-                b'#' => true,
-                b'.' => false,
-                b'?' => {
-                    let value = (arrangement_index.overflowing_shr(bit_index).0) & 1 == 1;
-                    bit_index += 1;
-                    value
-                },
-                _ => panic!("Invalid input"),
-            }));
-
-            actual_group_sizes.clear();
-
-            let mut current = false;
-            let mut count = 0;
-
-            for state in arrangement.iter() {
-                match (current, state) {
-                    (true, true) => count += 1,
-                    (true, false) => actual_group_sizes.push(count),
-                    (false, true) => count = 1,
-                    (false, false) => {}
+        fn inner(spec: &[u8], sizes: &[u32]) -> u32 {
+            if sizes.len() == 0 {
+                if spec.iter().all(|b| *b == b'.' || *b == b'?') {
+                    return 1;
                 }
-                current = *state;
+                return 0;
             }
 
-            if current {
-                actual_group_sizes.push(count);
+            if spec.len() < sizes[0] as usize {
+                return 0;
             }
 
-            if actual_group_sizes == expected_group_sizes {
-                sum += 1;
+            if spec.len() == 0 && sizes.len() > 0 {
+                return 0;
             }
+
+            if !spec[0..sizes[0] as usize].iter().all(|b| *b == b'#' || *b == b'?') {
+                if spec[0] == b'.' || spec[0] == b'?' {
+                    return inner(&spec[1..], sizes);
+                }
+                return 0;
+            }
+
+            if spec.len() > sizes[0] as usize {
+                let next = spec[sizes[0] as usize];
+                if next == b'.' {
+                    let first = inner(&spec[sizes[0] as usize + 1..], &sizes[1..]);
+                    if spec[0] == b'?' {
+                        return first + inner(&spec[1..], sizes);
+                    } else {
+                        return first;
+                    }
+                } else if next == b'?' {
+                    let first = inner(&spec[sizes[0] as usize + 1..], &sizes[1..]);
+                    if spec[0] == b'?' {
+                        return first + inner(&spec[1..], sizes);
+                    } else {
+                        return first;
+                    }
+                } else if next == b'#' {
+                    if spec[0] == b'?' {
+                        return inner(&spec[1..], sizes);
+                    } else {
+                        return 0;
+                    }
+                }
+            }
+
+            inner(&spec[sizes[0] as usize..], &sizes[1..])
         }
+
+        sum += inner(&arrangement_spec, &expected_group_sizes);;
     }
 
     (sum, 0)
