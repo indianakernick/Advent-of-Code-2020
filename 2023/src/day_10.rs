@@ -1,8 +1,6 @@
-use std::collections::{HashSet, HashMap};
-
 use crate::common;
 
-pub fn solve(input: &str) -> (u64, usize) {
+pub fn solve(input: &str) -> (i32, i32) {
     let input = input.as_bytes();
     let width = input.iter().position(|b| *b == b'\n').unwrap();
     let stride = width + 1;
@@ -25,8 +23,6 @@ pub fn solve(input: &str) -> (u64, usize) {
     let start_pos = i_to_xy(start_i);
 
     let mut routes = Vec::new();
-    let mut borders = HashSet::new();
-    borders.insert(start_pos);
 
     for dir in Dir::ALL {
         let next_pos = common::add(start_pos, dir.to_vec());
@@ -41,11 +37,16 @@ pub fn solve(input: &str) -> (u64, usize) {
 
     assert_eq!(routes.len(), 2);
 
+    let mut borders_1 = Vec::new();
+    let mut borders_2 = Vec::new();
     let mut steps = 1;
 
+    borders_1.push(start_pos);
+
     while routes[0].0 != routes[1].0 {
-        for (pos, back_dir) in routes.iter_mut() {
-            borders.insert(*pos);
+        for i in 0..2 {
+            let (pos, back_dir) = &mut routes[i];
+            if i == 0 { &mut borders_1 } else { &mut borders_2 }.push(*pos);
             let next_dir = input[xy_to_i(*pos)].other_connection(*back_dir);
             common::add_assign(pos, next_dir.to_vec());
             *back_dir = next_dir.opposite();
@@ -54,65 +55,21 @@ pub fn solve(input: &str) -> (u64, usize) {
         steps += 1;
     }
 
-    borders.insert(routes[0].0);
+    borders_1.push(routes[0].0);
+    borders_1.extend(borders_2.iter().rev());
+    borders_1.push(borders_1[0]);
 
-    let mut reached = HashMap::new();
+    // https://en.wikipedia.org/wiki/Shoelace_formula
+    let interior_count = borders_1
+        .windows(2)
+        .map(|pair| pair[0].0 * pair[1].1 - pair[1].0 * pair[0].1)
+        .sum::<i32>() / 2;
 
-    flood_fill(&mut reached, &borders, start_pos, width as i32, height as i32, input);
-
-    let area = reached.iter().filter(|r| *r.1).count() - borders.len();
+    // https://en.wikipedia.org/wiki/Pick's_theorem
+    // Note that `steps` is half of the number of border points.
+    let area = interior_count.abs() - steps + 1;
 
     (steps, area)
-}
-
-fn flood_fill(
-    reached: &mut HashMap<(i32, i32), bool>,
-    borders: &HashSet<(i32, i32)>,
-    pos: (i32, i32),
-    width: i32,
-    height: i32,
-    input: &[Tile],
-) {
-    let is_border = borders.contains(&pos);
-
-    reached.insert(pos, is_border);
-
-    let valid = |(x, y): (i32, i32)| -> bool {
-        0 <= x && x < width && 0 <= y && y < height
-    };
-
-    for dir in Dir::ALL {
-        let next_pos = common::add(pos, dir.to_vec());
-        if !valid(next_pos) {
-            continue;
-        }
-        if reached.contains_key(&next_pos) {
-            continue;
-        }
-
-        flood_fill(reached, borders, next_pos, width, height, input);
-    }
-
-    if is_border {
-        return;
-    }
-
-    let mut neighbour_count = 0;
-
-    for dir in Dir::ALL {
-        let next_pos = common::add(pos, dir.to_vec());
-        if borders.contains(&next_pos) {
-            neighbour_count += 1;
-            continue;
-        }
-        if reached.get(&next_pos) == Some(&true) {
-            neighbour_count += 1;
-        }
-    }
-
-    if neighbour_count >= 3 {
-        *reached.get_mut(&pos).unwrap() = true;
-    }
 }
 
 #[repr(u8)]
