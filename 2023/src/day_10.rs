@@ -1,66 +1,56 @@
 use crate::common;
 
 pub fn solve(input: &str) -> (i32, i32) {
-    let input = input.as_bytes();
-    let width = input.iter().position(|b| *b == b'\n').unwrap();
-    let stride = width + 1;
-    let height = (input.len() + 1) / stride;
-    let input = unsafe { std::mem::transmute::<&[u8], &[Tile]>(input) };
+    let grid = Grid::from_input(input);
+    let start_pos = grid.pos_of(Tile::Start).unwrap();
 
-    let i_to_xy = |i: usize| -> (i32, i32) {
-        ((i % stride) as i32, (i / stride) as i32)
-    };
-    // We don't really need this.
-    // Should just use the index. Add stride to go down. Sub stride to go up.
-    let xy_to_i = |(x, y): (i32, i32)| -> usize {
-        y as usize * stride + x as usize
-    };
-    let valid = |(x, y): (i32, i32)| -> bool {
-        0 <= x && x < width as i32 && 0 <= y && y < height as i32
-    };
-
-    let start_i = input.iter().position(|t| *t == Tile::Start).unwrap();
-    let start_pos = i_to_xy(start_i);
-
-    let mut routes = Vec::new();
+    let mut routes = [((0, 0), Dir::N); 2];
+    let mut routes_len = 0;
 
     for dir in Dir::ALL {
         let next_pos = common::add(start_pos, dir.to_vec());
-        if !valid(next_pos) {
+        if !grid.valid(next_pos) {
             continue;
         }
         let back_dir = dir.opposite();
-        if input[xy_to_i(next_pos)].connects(back_dir) {
-            routes.push((next_pos, back_dir));
+        if grid.get(next_pos).connects(back_dir) {
+            assert!(routes_len < 2, "Invalid input");
+            routes[routes_len] = (next_pos, back_dir);
+            routes_len += 1;
         }
     }
 
-    assert_eq!(routes.len(), 2);
+    assert_eq!(routes_len, 2, "Invalid input");
 
-    let mut borders_1 = Vec::new();
-    let mut borders_2 = Vec::new();
+    let mut borders = (Vec::new(), Vec::new());
     let mut steps = 1;
 
-    borders_1.push(start_pos);
+    borders.0.push(start_pos);
 
     while routes[0].0 != routes[1].0 {
-        for i in 0..2 {
-            let (pos, back_dir) = &mut routes[i];
-            if i == 0 { &mut borders_1 } else { &mut borders_2 }.push(*pos);
-            let next_dir = input[xy_to_i(*pos)].other_connection(*back_dir);
+        fn follow(
+            grid: &Grid,
+            (pos, back_dir): &mut ((i32, i32), Dir),
+            borders: &mut Vec<(i32, i32)>
+        ) {
+            borders.push(*pos);
+            let next_dir = grid.get(*pos).other_connection(*back_dir);
             common::add_assign(pos, next_dir.to_vec());
             *back_dir = next_dir.opposite();
         }
 
+        follow(&grid, &mut routes[0], &mut borders.0);
+        follow(&grid, &mut routes[1], &mut borders.1);
+
         steps += 1;
     }
 
-    borders_1.push(routes[0].0);
-    borders_1.extend(borders_2.iter().rev());
-    borders_1.push(borders_1[0]);
+    borders.0.push(routes[0].0);
+    borders.0.extend(borders.1.iter().rev());
+    borders.0.push(borders.0[0]);
 
     // https://en.wikipedia.org/wiki/Shoelace_formula
-    let interior_count = borders_1
+    let interior_count = borders.0
         .windows(2)
         .map(|pair| pair[0].0 * pair[1].1 - pair[1].0 * pair[0].1)
         .sum::<i32>() / 2;
@@ -70,6 +60,53 @@ pub fn solve(input: &str) -> (i32, i32) {
     let area = interior_count.abs() - steps + 1;
 
     (steps, area)
+}
+
+struct Grid<'a> {
+    tiles: &'a [Tile],
+    stride: usize,
+    width: i32,
+    height: i32,
+}
+
+impl<'a> Grid<'a> {
+    fn from_input(input: &str) -> Grid {
+        let bytes = input.as_bytes();
+        let width = bytes.iter().position(|b| *b == b'\n').unwrap();
+        let stride = width + 1;
+        let height = (bytes.len() + 1) / stride;
+        let tiles = unsafe { std::mem::transmute::<&[u8], &[Tile]>(bytes) };
+
+        Grid {
+            tiles,
+            stride,
+            width: width as i32,
+            height: height as i32,
+        }
+    }
+
+    fn valid(&self, (x, y): (i32, i32)) -> bool {
+        0 <= x && x < self.width && 0 <= y && y < self.height
+    }
+
+    fn index_to_pos(&self, index: usize) -> (i32, i32) {
+        ((index % self.stride) as i32, (index / self.stride) as i32)
+    }
+
+    fn pos_to_index(&self, (x, y): (i32, i32)) -> usize {
+        y as usize * self.stride + x as usize
+    }
+
+    fn pos_of(&self, tile: Tile) -> Option<(i32, i32)> {
+        self.tiles
+            .iter()
+            .position(|t| *t == tile)
+            .map(|index| self.index_to_pos(index))
+    }
+
+    fn get(&self, pos: (i32, i32)) -> Tile {
+        self.tiles[self.pos_to_index(pos)]
+    }
 }
 
 #[repr(u8)]
@@ -87,40 +124,21 @@ enum Tile {
 }
 
 impl Tile {
-    fn connects_north(self) -> bool {
-        match self {
-            Self::NS | Self::NE | Self::NW => true,
-            _ => false,
-        }
-    }
-
-    fn connects_east(self) -> bool {
-        match self {
-            Self::EW | Self::NE | Self::SE => true,
-            _ => false,
-        }
-    }
-
-    fn connects_south(self) -> bool {
-        match self {
-            Self::NS | Self::SW | Self::SE => true,
-            _ => false,
-        }
-    }
-
-    fn connects_west(self) -> bool {
-        match self {
-            Self::EW | Self::NW | Self::SW => true,
-            _ => false,
-        }
-    }
-
     fn connects(self, dir: Dir) -> bool {
-        match dir {
-            Dir::N => self.connects_north(),
-            Dir::E => self.connects_east(),
-            Dir::S => self.connects_south(),
-            Dir::W => self.connects_west(),
+        match (self, dir) {
+            (Self::NS, Dir::N) => true,
+            (Self::NS, Dir::S) => true,
+            (Self::EW, Dir::E) => true,
+            (Self::EW, Dir::W) => true,
+            (Self::NE, Dir::N) => true,
+            (Self::NE, Dir::E) => true,
+            (Self::NW, Dir::N) => true,
+            (Self::NW, Dir::W) => true,
+            (Self::SW, Dir::S) => true,
+            (Self::SW, Dir::W) => true,
+            (Self::SE, Dir::E) => true,
+            (Self::SE, Dir::S) => true,
+            _ => false,
         }
     }
 
