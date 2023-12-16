@@ -10,20 +10,19 @@ pub fn solve(input: &str) -> (usize, usize) {
 
     let count_1 = energised.len();
     let mut count_2 = 0;
-
-    assert_eq!(grid.get_width(), grid.get_height());
-
     let size = grid.get_width();
 
-    for pos in 0..size {
+    assert_eq!(size, grid.get_height());
+
+    for coord in 0..size {
         let sides = [
-            ((pos, 0), Dir::S),
-            ((size - 1, pos), Dir::W),
-            ((pos, size - 1), Dir::N),
-            ((0, pos), Dir::E),
+            (Dir::S, (coord, 0)),
+            (Dir::W, (size - 1, coord)),
+            (Dir::N, (coord, size - 1)),
+            (Dir::E, (0, coord)),
         ];
 
-        for (pos, dir) in sides {
+        for (dir, pos) in sides {
             energised.clear();
             simulate(&mut energised, grid, pos, dir);
             count_2 = count_2.max(energised.len());
@@ -43,7 +42,7 @@ fn simulate(
         return;
     }
 
-    let dir_bit = 1u8 << dir as u8;
+    let dir_bit = 1 << dir as u8;
     let mut exists = false;
 
     energised
