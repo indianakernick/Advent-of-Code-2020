@@ -1,109 +1,87 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
-use crate::common;
+use crate::common::{self, Dir, Grid};
 
 pub fn solve(input: &str) -> (usize, usize) {
-    let tiles = input.as_bytes();
-    let width = tiles.iter().position(|b| *b == b'\n').unwrap();
-    let stride = width + 1;
-    let height = (tiles.len() + 1) / stride;
+    let grid = Grid::from_input(input);
+    let mut energised = HashMap::new();
 
-    let mut energised = HashSet::new();
+    simulate(&mut energised, grid, (0, 0), Dir::E);
 
-    simulate(&mut energised, &tiles, stride, width, height, (0, 0), Dir::E);
-
-    let count_1 = energised_count(&energised);
-
+    let count_1 = energised.len();
     let mut count_2 = 0;
 
-    assert_eq!(width, height);
+    assert_eq!(grid.get_width(), grid.get_height());
 
-    for pos in 0..width {
-        energised.clear();
-        simulate(&mut energised, &tiles, stride, width, height, (pos as i32, 0), Dir::S);
-        let count = energised_count(&energised);
-        count_2 = count_2.max(count);
+    let size = grid.get_width();
 
-        energised.clear();
-        simulate(&mut energised, &tiles, stride, width, height, (width as i32 - 1, pos as i32), Dir::W);
-        let count = energised_count(&energised);
-        count_2 = count_2.max(count);
+    for pos in 0..size {
+        let sides = [
+            ((pos, 0), Dir::S),
+            ((size - 1, pos), Dir::W),
+            ((pos, size - 1), Dir::N),
+            ((0, pos), Dir::E),
+        ];
 
-        energised.clear();
-        simulate(&mut energised, &tiles, stride, width, height, (pos as i32, height as i32 - 1), Dir::N);
-        let count = energised_count(&energised);
-        count_2 = count_2.max(count);
-
-        energised.clear();
-        simulate(&mut energised, &tiles, stride, width, height, (0, pos as i32), Dir::E);
-        let count = energised_count(&energised);
-        count_2 = count_2.max(count);
+        for (pos, dir) in sides {
+            energised.clear();
+            simulate(&mut energised, grid, pos, dir);
+            count_2 = count_2.max(energised.len());
+        }
     }
 
     (count_1, count_2)
 }
 
-fn energised_count(energised: &HashSet<((i32, i32), Dir)>) -> usize {
-    energised.iter().map(|tile| tile.0).collect::<HashSet<_>>().len()
-}
-
 fn simulate(
-    energised: &mut HashSet<((i32, i32), Dir)>,
-    tiles: &[u8],
-    stride: usize,
-    width: usize,
-    height: usize,
-    position: (i32, i32),
+    energised: &mut HashMap<(i32, i32), u8>,
+    grid: Grid,
+    pos: (i32, i32),
     dir: Dir,
 ) {
-    if position.0 < 0 || position.0 >= width as i32 || position.1 < 0 || position.1 >= height as i32 {
+    if !grid.valid(pos) {
         return;
     }
 
-    if !energised.insert((position, dir)) {
+    let dir_bit = 1u8 << dir as u8;
+    let mut exists = false;
+
+    energised
+        .entry(pos)
+        .and_modify(|set| {
+            if *set & dir_bit == dir_bit {
+                exists = true;
+            } else {
+                *set |= dir_bit;
+            }
+        })
+        .or_insert(dir_bit);
+
+    if exists {
         return;
     }
 
-    match (tiles[position.1 as usize * stride + position.0 as usize], dir) {
-        (b'.', _) => simulate(energised, tiles, stride, width, height, common::add(position, dir.to_vec()), dir),
-        (b'/', Dir::N) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::E.to_vec()), Dir::E),
-        (b'/', Dir::E) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::N.to_vec()), Dir::N),
-        (b'/', Dir::S) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::W.to_vec()), Dir::W),
-        (b'/', Dir::W) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::S.to_vec()), Dir::S),
-        (b'\\', Dir::N) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::W.to_vec()), Dir::W),
-        (b'\\', Dir::E) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::S.to_vec()), Dir::S),
-        (b'\\', Dir::S) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::E.to_vec()), Dir::E),
-        (b'\\', Dir::W) => simulate(energised, tiles, stride, width, height, common::add(position, Dir::N.to_vec()), Dir::N),
-        (b'|', Dir::N) | (b'|', Dir::S) => simulate(energised, tiles, stride, width, height, common::add(position, dir.to_vec()), dir),
-        (b'|', Dir::E) | (b'|', Dir::W) => {
-            simulate(energised, tiles, stride, width, height, common::add(position, Dir::N.to_vec()), Dir::N);
-            simulate(energised, tiles, stride, width, height, common::add(position, Dir::S.to_vec()), Dir::S);
-        }
-        (b'-', Dir::N) | (b'-', Dir::S) => {
-            simulate(energised, tiles, stride, width, height, common::add(position, Dir::E.to_vec()), Dir::E);
-            simulate(energised, tiles, stride, width, height, common::add(position, Dir::W.to_vec()), Dir::W);
-        }
-        (b'-', Dir::W) | (b'-', Dir::E) => simulate(energised, tiles, stride, width, height, common::add(position, dir.to_vec()), dir),
+    let next_dirs = match (grid.get(pos), dir) {
+        (b'.', _) => (dir, None),
+        (b'/', Dir::N) => (Dir::E, None),
+        (b'/', Dir::E) => (Dir::N, None),
+        (b'/', Dir::S) => (Dir::W, None),
+        (b'/', Dir::W) => (Dir::S, None),
+        (b'\\', Dir::N) => (Dir::W, None),
+        (b'\\', Dir::E) => (Dir::S, None),
+        (b'\\', Dir::S) => (Dir::E, None),
+        (b'\\', Dir::W) => (Dir::N, None),
+        (b'|', Dir::N) | (b'|', Dir::S) => (dir, None),
+        (b'|', Dir::E) | (b'|', Dir::W) => (Dir::N, Some(Dir::S)),
+        (b'-', Dir::N) | (b'-', Dir::S) => (Dir::E, Some(Dir::W)),
+        (b'-', Dir::E) | (b'-', Dir::W) => (dir, None),
         _ => panic!(),
-    }
-}
+    };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-enum Dir {
-    N,
-    E,
-    S,
-    W,
-}
+    simulate(energised, grid, common::add(pos, next_dirs.0.to_vec()), next_dirs.0);
 
-impl Dir {
-    fn to_vec(self) -> (i32, i32) {
-        match self {
-            Self::N => (0, -1),
-            Self::E => (1, 0),
-            Self::S => (0, 1),
-            Self::W => (-1, 0),
-        }
+    if let Some(second) = next_dirs.1 {
+        simulate(energised, grid, common::add(pos, second.to_vec()), second);
     }
 }
 
@@ -123,4 +101,5 @@ r".|...\....
 ..//.|....";
     let output = solve(input);
     assert_eq!(output.0, 46);
+    assert_eq!(output.1, 51);
 }
