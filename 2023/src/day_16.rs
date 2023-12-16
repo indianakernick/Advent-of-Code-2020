@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::common;
 
-pub fn solve(input: &str) -> (usize, u32) {
+pub fn solve(input: &str) -> (usize, usize) {
     let tiles = input.as_bytes();
     let width = tiles.iter().position(|b| *b == b'\n').unwrap();
     let stride = width + 1;
@@ -12,7 +12,39 @@ pub fn solve(input: &str) -> (usize, u32) {
 
     simulate(&mut energised, &tiles, stride, width, height, (0, 0), Dir::E);
 
-    (energised.iter().map(|tile| tile.0).collect::<HashSet<_>>().len(), 0)
+    let count_1 = energised_count(&energised);
+
+    let mut count_2 = 0;
+
+    assert_eq!(width, height);
+
+    for pos in 0..width {
+        energised.clear();
+        simulate(&mut energised, &tiles, stride, width, height, (pos as i32, 0), Dir::S);
+        let count = energised_count(&energised);
+        count_2 = count_2.max(count);
+
+        energised.clear();
+        simulate(&mut energised, &tiles, stride, width, height, (width as i32 - 1, pos as i32), Dir::W);
+        let count = energised_count(&energised);
+        count_2 = count_2.max(count);
+
+        energised.clear();
+        simulate(&mut energised, &tiles, stride, width, height, (pos as i32, height as i32 - 1), Dir::N);
+        let count = energised_count(&energised);
+        count_2 = count_2.max(count);
+
+        energised.clear();
+        simulate(&mut energised, &tiles, stride, width, height, (0, pos as i32), Dir::E);
+        let count = energised_count(&energised);
+        count_2 = count_2.max(count);
+    }
+
+    (count_1, count_2)
+}
+
+fn energised_count(energised: &HashSet<((i32, i32), Dir)>) -> usize {
+    energised.iter().map(|tile| tile.0).collect::<HashSet<_>>().len()
 }
 
 fn simulate(
