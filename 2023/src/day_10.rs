@@ -1,7 +1,7 @@
-use crate::common;
+use crate::common::{self, Grid, Dir};
 
 pub fn solve(input: &str) -> (i32, i32) {
-    let grid = Grid::from_input(input);
+    let grid = Grid::<Tile>::from_input(input);
     let start_pos = grid.pos_of(Tile::Start).unwrap();
 
     let mut routes = [((0, 0), Dir::N); 2];
@@ -29,7 +29,7 @@ pub fn solve(input: &str) -> (i32, i32) {
 
     while routes[0].0 != routes[1].0 {
         fn follow(
-            grid: &Grid,
+            grid: &Grid<Tile>,
             (pos, back_dir): &mut ((i32, i32), Dir),
             borders: &mut Vec<(i32, i32)>
         ) {
@@ -60,53 +60,6 @@ pub fn solve(input: &str) -> (i32, i32) {
     let area = interior_count.abs() - steps + 1;
 
     (steps, area)
-}
-
-struct Grid<'a> {
-    tiles: &'a [Tile],
-    stride: usize,
-    width: i32,
-    height: i32,
-}
-
-impl<'a> Grid<'a> {
-    fn from_input(input: &str) -> Grid {
-        let bytes = input.as_bytes();
-        let width = bytes.iter().position(|b| *b == b'\n').unwrap();
-        let stride = width + 1;
-        let height = (bytes.len() + 1) / stride;
-        let tiles = unsafe { std::mem::transmute::<&[u8], &[Tile]>(bytes) };
-
-        Grid {
-            tiles,
-            stride,
-            width: width as i32,
-            height: height as i32,
-        }
-    }
-
-    fn valid(&self, (x, y): (i32, i32)) -> bool {
-        0 <= x && x < self.width && 0 <= y && y < self.height
-    }
-
-    fn index_to_pos(&self, index: usize) -> (i32, i32) {
-        ((index % self.stride) as i32, (index / self.stride) as i32)
-    }
-
-    fn pos_to_index(&self, (x, y): (i32, i32)) -> usize {
-        y as usize * self.stride + x as usize
-    }
-
-    fn pos_of(&self, tile: Tile) -> Option<(i32, i32)> {
-        self.tiles
-            .iter()
-            .position(|t| *t == tile)
-            .map(|index| self.index_to_pos(index))
-    }
-
-    fn get(&self, pos: (i32, i32)) -> Tile {
-        self.tiles[self.pos_to_index(pos)]
-    }
 }
 
 #[repr(u8)]
@@ -157,41 +110,6 @@ impl Tile {
             (Self::SE, Dir::E) => Dir::S,
             (Self::SE, Dir::S) => Dir::E,
             _ => panic!(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Dir {
-    N,
-    E,
-    S,
-    W,
-}
-
-impl Dir {
-    const ALL: [Self; 4] = [
-        Self::N,
-        Self::E,
-        Self::S,
-        Self::W,
-    ];
-
-    fn opposite(self) -> Self {
-        match self {
-            Self::N => Self::S,
-            Self::E => Self::W,
-            Self::S => Self::N,
-            Self::W => Self::E,
-        }
-    }
-
-    fn to_vec(self) -> (i32, i32) {
-        match self {
-            Self::N => (0, -1),
-            Self::E => (1, 0),
-            Self::S => (0, 1),
-            Self::W => (-1, 0),
         }
     }
 }
