@@ -1,10 +1,12 @@
 use crate::common::{Grid, Dir, self};
 
 pub fn solve(input: &str) -> (u32, u32) {
+    const MAX_COUNT: u8 = 10;
+
     let grid = Grid::<u8>::from_input(input);
-    let mut heat_loss = vec![u32::MAX; (grid.get_width() * grid.get_height() * 4 * 3) as usize];
+    let mut heat_loss = vec![u32::MAX; (grid.get_width() * grid.get_height() * 4 * MAX_COUNT as i32) as usize];
     let heat_loss_i = |((x, y), dir, count): ((i32, i32), Dir, u8)| {
-        (y * grid.get_width() * 4 * 3 + x * 4 * 3 + (dir as i32) * 3 + (count - 1) as i32) as usize
+        (y * grid.get_width() * 4 * MAX_COUNT as i32 + x * 4 * MAX_COUNT as i32 + (dir as i32) * MAX_COUNT as i32 + (count - 1) as i32) as usize
     };
 
     heat_loss[heat_loss_i(((0, 0), Dir::S, 1))] = 0;
@@ -15,7 +17,7 @@ pub fn solve(input: &str) -> (u32, u32) {
     for x in 0..grid.get_width() {
         for y in 0..grid.get_height() {
             for dir in Dir::ALL {
-                for dir_count in 1..=3 {
+                for dir_count in 1..=MAX_COUNT {
                     unvisited.push(((x, y), dir, dir_count));
                 }
             }
@@ -55,14 +57,25 @@ pub fn solve(input: &str) -> (u32, u32) {
                 continue;
             }
 
+            // if next_dir == prev_dir {
+            //     if dir_count < 3 {
+            //         neighbours.push((next_pos, next_dir, dir_count + 1));
+            //     }
+            //     continue;
+            // }
+
+            // neighbours.push((next_pos, next_dir, 1));
+
             if next_dir == prev_dir {
-                if dir_count < 3 {
+                if dir_count < 10 {
                     neighbours.push((next_pos, next_dir, dir_count + 1));
                 }
                 continue;
             }
 
-            neighbours.push((next_pos, next_dir, 1));
+            if dir_count >= 4 {
+                neighbours.push((next_pos, next_dir, 1));
+            }
         }
 
         if neighbours.is_empty() {
@@ -83,17 +96,17 @@ pub fn solve(input: &str) -> (u32, u32) {
     let end_pos = (grid.get_width() - 1, grid.get_height() - 1);
 
     for dir in Dir::ALL {
-        for count in 1..=3 {
+        for count in 1..=MAX_COUNT {
             min = min.min(heat_loss[heat_loss_i((end_pos, dir, count))]);
         }
     }
 
-    (min, 0)
+    (0, min)
 }
 
 #[cfg(test)]
 #[test]
-fn example() {
+fn example_1() {
     let input =
 "2413432311323
 3215453535623
@@ -109,5 +122,19 @@ fn example() {
 2546548887735
 4322674655533";
     let output = solve(input);
-    assert_eq!(output.0, 102);
+    // assert_eq!(output.0, 102);
+    assert_eq!(output.1, 94);
+}
+
+#[cfg(test)]
+#[test]
+fn example_2() {
+    let input =
+"111111111111
+999999999991
+999999999991
+999999999991
+999999999991";
+    let output = solve(input);
+    assert_eq!(output.1, 71);
 }
