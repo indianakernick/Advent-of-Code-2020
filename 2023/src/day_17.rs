@@ -1,12 +1,24 @@
 use crate::common::{Grid, Dir, self};
 
 pub fn solve(input: &str) -> (u32, u32) {
-    const MAX_COUNT: u8 = 10;
+    (search::<1>(input), search::<2>(input))
+}
+
+fn search<const PART: u8>(input: &str) -> u32 {
+    let min_count = if PART == 1 { 1 } else { 4 };
+    let max_count = if PART == 1 { 3 } else { 10 };
 
     let grid = Grid::<u8>::from_input(input);
-    let mut heat_loss = vec![u32::MAX; (grid.get_width() * grid.get_height() * 4 * MAX_COUNT as i32) as usize];
+    let mut heat_loss = vec![u32::MAX; (grid.get_width() * grid.get_height() * 4 * max_count) as usize];
     let heat_loss_i = |((x, y), dir, count): ((i32, i32), Dir, u8)| {
-        (y * grid.get_width() * 4 * MAX_COUNT as i32 + x * 4 * MAX_COUNT as i32 + (dir as i32) * MAX_COUNT as i32 + (count - 1) as i32) as usize
+        debug_assert!(grid.valid((x, y)));
+        debug_assert!(1 <= count && count <= max_count as u8);
+        (
+            y * grid.get_width() * 4 * max_count
+            + x * 4 * max_count
+            + (dir as i32) * max_count
+            + (count - 1) as i32
+        ) as usize
     };
 
     heat_loss[heat_loss_i(((0, 0), Dir::S, 1))] = 0;
@@ -17,7 +29,7 @@ pub fn solve(input: &str) -> (u32, u32) {
     for x in 0..grid.get_width() {
         for y in 0..grid.get_height() {
             for dir in Dir::ALL {
-                for dir_count in 1..=MAX_COUNT {
+                for dir_count in 1..=max_count as u8 {
                     unvisited.push(((x, y), dir, dir_count));
                 }
             }
@@ -26,7 +38,7 @@ pub fn solve(input: &str) -> (u32, u32) {
 
     let mut neighbours = Vec::new();
 
-    while unvisited.len() > 0 {
+    while !unvisited.is_empty() {
         let mut min_loss = u32::MAX;
         let mut min_index = usize::MAX;
 
@@ -57,29 +69,19 @@ pub fn solve(input: &str) -> (u32, u32) {
                 continue;
             }
 
-            // if next_dir == prev_dir {
-            //     if dir_count < 3 {
-            //         neighbours.push((next_pos, next_dir, dir_count + 1));
-            //     }
-            //     continue;
-            // }
-
-            // neighbours.push((next_pos, next_dir, 1));
-
             if next_dir == prev_dir {
-                if dir_count < 10 {
+                if dir_count < max_count as u8 {
                     neighbours.push((next_pos, next_dir, dir_count + 1));
                 }
                 continue;
             }
 
-            if dir_count >= 4 {
+            // dir_count should never be 0. min_count == 1 when PART == 1.
+            // Another way to help the compiler optimise this would be to use
+            // NonZeroU8 but that makes the code a bit ugly.
+            if PART == 1 || dir_count >= min_count {
                 neighbours.push((next_pos, next_dir, 1));
             }
-        }
-
-        if neighbours.is_empty() {
-            break;
         }
 
         for neighbour in neighbours.iter() {
@@ -95,20 +97,20 @@ pub fn solve(input: &str) -> (u32, u32) {
     let mut min = u32::MAX;
     let end_pos = (grid.get_width() - 1, grid.get_height() - 1);
 
-    for dir in Dir::ALL {
-        for count in 1..=MAX_COUNT {
+    for dir in [Dir::E, Dir::S] {
+        for count in min_count..=max_count as u8 {
             min = min.min(heat_loss[heat_loss_i((end_pos, dir, count))]);
         }
     }
 
-    (0, min)
+    min
 }
 
 #[cfg(test)]
 #[test]
 fn example_1() {
-    let input =
-"2413432311323
+    let input = "\
+2413432311323
 3215453535623
 3255245654254
 3446585845452
@@ -122,15 +124,15 @@ fn example_1() {
 2546548887735
 4322674655533";
     let output = solve(input);
-    // assert_eq!(output.0, 102);
+    assert_eq!(output.0, 102);
     assert_eq!(output.1, 94);
 }
 
 #[cfg(test)]
 #[test]
 fn example_2() {
-    let input =
-"111111111111
+    let input = "\
+111111111111
 999999999991
 999999999991
 999999999991
