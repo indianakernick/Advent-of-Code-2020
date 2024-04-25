@@ -1,7 +1,42 @@
+use std::collections::BinaryHeap;
+
 use crate::common::{Grid, Dir, self};
 
 pub fn solve(input: &str) -> (u32, u32) {
     (search::<1>(input), search::<2>(input))
+}
+
+#[derive(PartialEq, Eq)]
+struct Node {
+    loss: u32,
+    pos: (i32, i32),
+    dir: Dir,
+    count: u8,
+}
+
+impl Node {
+    fn new(loss: u32, pos: (i32, i32), dir: Dir, count: u8) -> Node {
+        Node { loss, pos, dir, count }
+    }
+
+    fn into_tuple(&self) -> ((i32, i32), Dir, u8) {
+        (self.pos, self.dir, self.count)
+    }
+}
+
+impl Ord for Node {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.loss.cmp(&self.loss)
+            .then_with(|| self.pos.cmp(&other.pos))
+            .then_with(|| self.dir.cmp(&other.dir))
+            .then_with(|| self.count.cmp(&other.count))
+    }
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(&other))
+    }
 }
 
 fn search<const PART: u8>(input: &str) -> u32 {
@@ -21,74 +56,58 @@ fn search<const PART: u8>(input: &str) -> u32 {
         ) as usize
     };
 
-    heat_loss[heat_loss_i(((0, 1), Dir::S, 1))] = (grid.get((0, 1)) - b'0') as u32;
-    heat_loss[heat_loss_i(((1, 0), Dir::E, 1))] = (grid.get((1, 0)) - b'0') as u32;
+    let mut queue = BinaryHeap::new();
 
-    let mut unvisited = Vec::new();
-
-    for x in 0..grid.get_width() {
-        for y in 0..grid.get_height() {
-            for dir in Dir::ALL {
-                for dir_count in 1..=max_count as u8 {
-                    unvisited.push(((x, y), dir, dir_count));
-                }
-            }
-        }
+    for dir in [Dir::E, Dir::S] {
+        let vec = dir.to_vec();
+        let loss = (grid.get(vec) - b'0') as u32;
+        heat_loss[heat_loss_i((vec, dir, 1))] = loss;
+        queue.push(Node::new(loss, vec, dir, 1));
     }
 
     let mut neighbours = Vec::new();
 
-    while !unvisited.is_empty() {
-        let mut min_loss = u32::MAX;
-        let mut min_index = usize::MAX;
-
-        for i in 0..unvisited.len() {
-            let loss = heat_loss[heat_loss_i(unvisited[i])];
-            if loss < min_loss {
-                min_loss = loss;
-                min_index = i;
-            }
+    while let Some(node) = queue.pop() {
+        // Necessary because we're not replacing nodes on the queue, we're
+        // pushing a duplicate when a better path is found for the same node.
+        if node.loss > heat_loss[heat_loss_i(node.into_tuple())] {
+            continue;
         }
-
-        if min_index == usize::MAX {
-            break;
-        }
-
-        let (pos, prev_dir, dir_count) = unvisited.swap_remove(min_index);
 
         neighbours.clear();
 
         for next_dir in Dir::ALL {
-            if next_dir == prev_dir.opposite() {
+            if next_dir == node.dir.opposite() {
                 continue;
             }
 
-            let next_pos = common::add(pos, next_dir.to_vec());
+            let next_pos = common::add(node.pos, next_dir.to_vec());
 
             if !grid.valid(next_pos) {
                 continue;
             }
 
-            if next_dir == prev_dir {
-                if dir_count < max_count as u8 {
-                    neighbours.push((next_pos, next_dir, dir_count + 1));
+            if next_dir == node.dir {
+                if node.count < max_count as u8 {
+                    neighbours.push((next_pos, next_dir, node.count + 1));
                 }
                 continue;
             }
 
-            // dir_count should never be 0. min_count == 1 when PART == 1.
+            // The count should never be 0. min_count == 1 when PART == 1.
             // Another way to help the compiler optimise this would be to use
             // NonZeroU8 but that makes the code a bit ugly.
-            if PART == 1 || dir_count >= min_count {
+            if PART == 1 || node.count >= min_count {
                 neighbours.push((next_pos, next_dir, 1));
             }
         }
 
         for neighbour in neighbours.iter() {
-            let next_loss = (grid.get(neighbour.0) - b'0') as u32;
-            let new_loss = min_loss + next_loss;
+            let neighbour_loss = (grid.get(neighbour.0) - b'0') as u32;
+            let new_loss = node.loss + neighbour_loss;
             let index = heat_loss_i(*neighbour);
             if new_loss < heat_loss[index] {
+                queue.push(Node::new(new_loss, neighbour.0, neighbour.1, neighbour.2));
                 heat_loss[index] = new_loss;
             }
         }
