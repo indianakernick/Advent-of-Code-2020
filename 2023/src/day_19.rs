@@ -16,7 +16,7 @@ pub fn solve(input: &str) -> (u32, u32) {
 
     for line in &mut line_iter {
         let part = Part::from_bytes(line);
-        if workflows.evaluate(&part, start_workflow) {
+        if workflows.accepts(&part, start_workflow) {
             accept_sum += part.sum() as u32;
         }
     }
@@ -96,7 +96,7 @@ impl Predicate {
         }
     }
 
-    fn evaluate(&self, value: u16) -> bool {
+    fn check(&self, value: u16) -> bool {
         match *self {
             Self::GreaterThan(rhs) => value > rhs,
             Self::LessThan(rhs) => value < rhs,
@@ -106,9 +106,9 @@ impl Predicate {
 
 #[derive(Clone, Copy)]
 enum WorkflowRef<'a> {
-    Workflow(&'a [u8]),
     Accept,
     Reject,
+    Workflow(&'a [u8]),
 }
 
 impl<'a> WorkflowRef<'a> {
@@ -137,20 +137,20 @@ impl<'a> Rule<'a> {
         (Self { rating, predicate, next }, 1 + p_length + r_length)
     }
 
-    fn evaluate(&self, part: &Part) -> bool {
-        self.predicate.evaluate(part.get(self.rating))
+    fn check(&self, part: &Part) -> bool {
+        self.predicate.check(part.get(self.rating))
     }
 }
 
 struct Workflow<'a> {
-    rules: Vec<Rule<'a>>,
+    rules: Vec<Rule<'a>>, // Can we avoid using Vec here?
     default: WorkflowRef<'a>,
 }
 
 impl<'a> Workflow<'a> {
-    fn evaluate(&self, part: &Part) -> WorkflowRef<'a> {
+    fn resolve_next(&self, part: &Part) -> WorkflowRef<'a> {
         for rule in self.rules.iter() {
-            if rule.evaluate(part) {
+            if rule.check(part) {
                 return rule.next;
             }
         }
@@ -183,15 +183,15 @@ impl<'a> Workflows<'a> {
         self.map.insert(&bytes[..open_curly], Workflow { rules, default });
     }
 
-    fn start<'b>(&'b self) -> &'b Workflow<'a> {
+    fn start(&self) -> &Workflow<'a> {
         self.map.get(b"in".as_slice()).unwrap()
     }
 
-    fn evaluate(&self, part: &Part, workflow: &Workflow) -> bool {
-        match workflow.evaluate(&part) {
+    fn accepts(&self, part: &Part, workflow: &Workflow) -> bool {
+        match workflow.resolve_next(&part) {
             WorkflowRef::Accept => true,
             WorkflowRef::Reject => false,
-            WorkflowRef::Workflow(name) => self.evaluate(part, self.map.get(name).unwrap()),
+            WorkflowRef::Workflow(name) => self.accepts(part, self.map.get(name).unwrap()),
         }
     }
 }
