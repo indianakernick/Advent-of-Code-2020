@@ -21,8 +21,8 @@ fn search<const PART: u8>(input: &str) -> u32 {
         ) as usize
     };
 
-    heat_loss[heat_loss_i(((0, 0), Dir::S, 1))] = 0;
-    heat_loss[heat_loss_i(((0, 0), Dir::E, 1))] = 0;
+    heat_loss[heat_loss_i(((0, 1), Dir::S, 1))] = (grid.get((0, 1)) - b'0') as u32;
+    heat_loss[heat_loss_i(((1, 0), Dir::E, 1))] = (grid.get((1, 0)) - b'0') as u32;
 
     let mut unvisited = Vec::new();
 

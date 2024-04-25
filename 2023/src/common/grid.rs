@@ -58,6 +58,7 @@ impl<'a, Tile> Grid<'a, Tile>
     where Tile: Copy
 {
     pub fn get(&self, pos: (i32, i32)) -> Tile {
+        debug_assert!(self.valid(pos));
         self.tiles[self.pos_to_index(pos)]
     }
 }
