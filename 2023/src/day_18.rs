@@ -1,53 +1,77 @@
 use crate::common::{self, Dir};
 
-pub fn solve(input: &str) -> (u32, u32) {
-    let instructions = common::lines_iter(input)
-        .map(|line| {
-            let dir = match line[0] {
-                b'U' => Dir::N,
-                b'R' => Dir::E,
-                b'D' => Dir::S,
-                b'L' => Dir::W,
-                _ => panic!("Invalid input"),
-            };
+pub fn solve(input: &str) -> (u64, u64) {
+    let mut state_1 = State::default();
+    let mut state_2 = State::default();
 
-            let distance = if line[3] == b' ' {
-                line[2] - b'0'
-            } else if line[4] == b' ' {
-                (line[2] - b'0') * 10 + line[3] - b'0'
-            } else {
-                panic!("Invalid input");
-            };
+    for line in common::lines_iter(input) {
+        let dir_1 = match line[0] {
+            b'U' => Dir::N,
+            b'R' => Dir::E,
+            b'D' => Dir::S,
+            b'L' => Dir::W,
+            _ => panic!("Invalid input"),
+        };
 
-            (dir, distance)
-        })
-        .collect::<Vec<_>>();
+        let dist_1 = if line[3] == b' ' {
+            line[2] - b'0'
+        } else if line[4] == b' ' {
+            (line[2] - b'0') * 10 + line[3] - b'0'
+        } else {
+            panic!("Invalid input");
+        };
 
-    let mut positions = Vec::with_capacity(instructions.len() + 1);
-    let mut position = (0, 0);
-    let mut path_length = 0;
+        let dir_2 = match line[line.len() - 2] {
+            b'0' => Dir::E,
+            b'1' => Dir::S,
+            b'2' => Dir::W,
+            b'3' => Dir::N,
+            _ => panic!("Invalid input"),
+        };
 
-    for (dir, distance) in instructions {
-        positions.push(position);
-        common::add_assign(&mut position, dir.to_vec_mag(distance as i32));
-        path_length += distance as u32;
+        let dist_2 = common::parse_u32_hex(&line[line.len() - 7..line.len() - 2]);
+
+        state_1.reduce(dir_1, dist_1 as u32);
+        state_2.reduce(dir_2, dist_2);
     }
 
-    positions.push((0, 0));
+    (state_1.area(), state_2.area())
+}
 
-    // Shoelace formula
-    let interior_count = positions
-        .windows(2)
-        .map(|pair| pair[0].0 * pair[1].1 - pair[1].0 * pair[0].1)
-        .sum::<i32>() / 2;
+#[derive(Default)]
+struct State {
+    position: (i32, i32),
+    path_length: u32,
+    interior_count: i64,
+}
 
-    // A slight modification of Pick's theorem.
-    (interior_count.abs() as u32 + path_length / 2 + 1, 0)
+impl State {
+    fn reduce(&mut self, dir: Dir, dist: u32) {
+        // https://en.wikipedia.org/wiki/Shoelace_formula
+        let next_pos = common::add(self.position, dir.to_vec_mag(dist as i32));
+        self.path_length += dist;
+        self.interior_count += determinant(self.position, next_pos);
+        self.position = next_pos;
+    }
+
+    fn area(self) -> u64 {
+        // A variation of Pick's theorem.
+        // https://en.wikipedia.org/wiki/Pick's_theorem
+        let interior_count = self.interior_count + determinant(self.position, (0, 0));
+        (interior_count.abs() as u64 + self.path_length as u64) / 2 + 1
+    }
+}
+
+// Determinant of this matrix:
+// | a.0 b.0 |
+// | a.1 b.1 |
+fn determinant(a: (i32, i32), b: (i32, i32)) -> i64 {
+    a.0 as i64 * b.1 as i64 - b.0 as i64 * a.1 as i64
 }
 
 #[cfg(test)]
 #[test]
-fn example_1() {
+fn example() {
     let input = "\
 R 6 (#70c710)
 D 5 (#0dc571)
@@ -65,4 +89,5 @@ L 2 (#015232)
 U 2 (#7a21e3)";
     let output = solve(input);
     assert_eq!(output.0, 62);
+    assert_eq!(output.1, 952408144115);
 }

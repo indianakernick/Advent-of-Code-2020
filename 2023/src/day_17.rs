@@ -56,6 +56,8 @@ fn search<const PART: u8>(grid: &Grid) -> u32 {
         ) as usize
     };
 
+    // https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+
     let mut queue = BinaryHeap::new();
 
     for dir in [Dir::E, Dir::S] {

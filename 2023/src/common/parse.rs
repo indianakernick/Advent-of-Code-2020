@@ -54,6 +54,22 @@ const POW_10_32: [u32; 10] = [
     1000000000,
 ];
 
+pub fn parse_u32_hex(bytes: &[u8]) -> u32 {
+    bytes
+        .iter()
+        .rev()
+        .enumerate()
+        .map(|(i, b)| {
+            let digit = if b.is_ascii_digit() {
+                *b - b'0'
+            } else {
+                *b - b'a' + 10
+            };
+            (digit as u32) << (4 * i)
+        })
+        .sum()
+}
+
 pub fn parse_u64(bytes: &[u8]) -> u64 {
     bytes
         .iter()
