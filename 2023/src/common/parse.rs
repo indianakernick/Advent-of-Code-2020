@@ -20,6 +20,14 @@ pub fn index_of_after(bytes: &[u8], needle: u8, index: usize) -> usize {
         + index
 }
 
+pub fn rindex_of(bytes: &[u8], needle: u8) -> usize {
+    bytes.len() - 1 - bytes
+        .iter()
+        .rev()
+        .position(|b| *b == needle)
+        .unwrap()
+}
+
 pub fn parse_u32(bytes: &[u8]) -> u32 {
     bytes
         .iter()
