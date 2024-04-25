@@ -3,7 +3,8 @@ use std::collections::BinaryHeap;
 use crate::common::{Grid, Dir, self};
 
 pub fn solve(input: &str) -> (u32, u32) {
-    (search::<1>(input), search::<2>(input))
+    let grid = Grid::<u8>::from_input(input);
+    (search::<1>(&grid), search::<2>(&grid))
 }
 
 #[derive(PartialEq, Eq)]
@@ -39,11 +40,10 @@ impl PartialOrd for Node {
     }
 }
 
-fn search<const PART: u8>(input: &str) -> u32 {
+fn search<const PART: u8>(grid: &Grid) -> u32 {
     let min_count = if PART == 1 { 1 } else { 4 };
     let max_count = if PART == 1 { 3 } else { 10 };
 
-    let grid = Grid::<u8>::from_input(input);
     let mut heat_loss = vec![u32::MAX; (grid.get_width() * grid.get_height() * 4 * max_count) as usize];
     let heat_loss_i = |((x, y), dir, count): ((i32, i32), Dir, u8)| {
         debug_assert!(grid.valid((x, y)));

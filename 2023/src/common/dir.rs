@@ -24,12 +24,16 @@ impl Dir {
         }
     }
 
-    pub fn to_vec(self) -> (i32, i32) {
+    pub fn to_vec_mag(self, magnitude: i32) -> (i32, i32) {
         match self {
-            Self::N => (0, -1),
-            Self::E => (1, 0),
-            Self::S => (0, 1),
-            Self::W => (-1, 0),
+            Self::N => (0, -magnitude),
+            Self::E => (magnitude, 0),
+            Self::S => (0, magnitude),
+            Self::W => (-magnitude, 0),
         }
+    }
+
+    pub fn to_vec(self) -> (i32, i32) {
+        self.to_vec_mag(1)
     }
 }
