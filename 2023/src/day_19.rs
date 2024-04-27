@@ -2,26 +2,31 @@ use std::collections::HashMap;
 
 use crate::common;
 
-pub fn solve(input: &str) -> (u32, u32) {
+pub fn solve(input: &str) -> (u32, u64) {
     let mut line_iter = common::lines_iter(input);
-    let mut workflows = Workflows::default();
+    let mut workflow_map = WorkflowMap::default();
 
     for line in &mut line_iter {
         if line.is_empty() { break; }
-        workflows.insert_from_bytes(line);
+        workflow_map.insert_from_bytes(line);
     }
 
-    let start_workflow = workflows.start();
+    let start_workflow = workflow_map.start();
     let mut accept_sum = 0;
 
     for line in &mut line_iter {
         let part = Part::from_bytes(line);
-        if workflows.accepts(&part, start_workflow) {
+        if workflow_map.accepts(&part, start_workflow) {
             accept_sum += part.sum() as u32;
         }
     }
 
-    (accept_sum, 0)
+    let range = PartRange {
+        lower: Part::new_all(0),
+        upper: Part::new_all(4001),
+    };
+
+    (accept_sum, workflow_map.accepts_count(range, start_workflow, 0))
 }
 
 #[derive(Clone, Copy)]
@@ -44,6 +49,7 @@ impl Rating {
     }
 }
 
+#[derive(Clone, Copy)]
 struct Part {
     x: u16,
     m: u16,
@@ -52,7 +58,11 @@ struct Part {
 }
 
 impl Part {
-    fn from_bytes(bytes: &[u8]) -> Part {
+    fn new_all(all: u16) -> Self {
+        Part { x: all, m: all, a: all, s: all }
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Self {
         let comma_1 = common::index_of(bytes, b',');
         let comma_2 = common::index_of_after(bytes, b',', comma_1 + 1);
         let comma_3 = common::index_of_after(bytes, b',', comma_2 + 1);
@@ -77,8 +87,67 @@ impl Part {
     fn sum(&self) -> u16 {
         self.x + self.m + self.a + self.s
     }
+
+    fn with<F: FnOnce(u16) -> u16>(&self, rating: Rating, transform: F) -> Self {
+        let mut copy = *self;
+        match rating {
+            Rating::X => copy.x = transform(self.x),
+            Rating::M => copy.m = transform(self.m),
+            Rating::A => copy.a = transform(self.a),
+            Rating::S => copy.s = transform(self.s),
+        };
+        copy
+    }
+
+    fn join<F: FnMut(u16, u16)>(&self, other: &Part, mut apply: F) {
+        apply(self.x, other.x);
+        apply(self.m, other.m);
+        apply(self.a, other.a);
+        apply(self.s, other.s);
+    }
 }
 
+struct PartRange {
+    lower: Part,
+    upper: Part,
+}
+
+impl PartRange {
+    fn split(self, rating: Rating, predicate: Predicate) -> (Self, Self) {
+        match predicate {
+            Predicate::GreaterThan(lower) => (
+                Self {
+                    lower: self.lower.with(rating, |old| old.max(lower)),
+                    upper: self.upper,
+                },
+                Self {
+                    lower: self.lower,
+                    upper: self.upper.with(rating, |old| old.min(lower + 1)),
+                },
+            ),
+            Predicate::LessThan(upper) => (
+                Self {
+                    lower: self.lower,
+                    upper: self.upper.with(rating, |old| old.min(upper)),
+                },
+                Self {
+                    lower: self.lower.with(rating, |old| old.max(upper - 1)),
+                    upper: self.upper,
+                }
+            ),
+        }
+    }
+
+    fn count(self) -> u64 {
+        let mut product = 1;
+        self.lower.join(&self.upper, |lower, upper| {
+            product *= (upper - lower - 1) as u64;
+        });
+        product
+    }
+}
+
+#[derive(Clone, Copy)]
 enum Predicate {
     GreaterThan(u16),
     LessThan(u16),
@@ -143,7 +212,10 @@ impl<'a> Rule<'a> {
 }
 
 struct Workflow<'a> {
-    rules: Vec<Rule<'a>>, // Can we avoid using Vec here?
+    // Can we avoid using Vec here?
+    // Perhaps an array or a slice onto something like a C++ std::deque.
+    // Or perhaps we turn this whole thing into a proper binary tree?
+    rules: Vec<Rule<'a>>,
     default: WorkflowRef<'a>,
 }
 
@@ -159,11 +231,11 @@ impl<'a> Workflow<'a> {
 }
 
 #[derive(Default)]
-struct Workflows<'a> {
+struct WorkflowMap<'a> {
     map: HashMap<&'a [u8], Workflow<'a>>,
 }
 
-impl<'a> Workflows<'a> {
+impl<'a> WorkflowMap<'a> {
     fn insert_from_bytes(&mut self, bytes: &'a [u8]) {
         let open_curly = common::index_of(bytes, b'{');
         let last_comma = common::rindex_of(bytes, b',');
@@ -183,15 +255,44 @@ impl<'a> Workflows<'a> {
         self.map.insert(&bytes[..open_curly], Workflow { rules, default });
     }
 
+    fn get(&self, name: &'a [u8]) -> &Workflow<'a> {
+        self.map.get(name).unwrap()
+    }
+
     fn start(&self) -> &Workflow<'a> {
-        self.map.get(b"in".as_slice()).unwrap()
+        self.get(b"in".as_slice())
     }
 
     fn accepts(&self, part: &Part, workflow: &Workflow) -> bool {
         match workflow.resolve_next(&part) {
             WorkflowRef::Accept => true,
             WorkflowRef::Reject => false,
-            WorkflowRef::Workflow(name) => self.accepts(part, self.map.get(name).unwrap()),
+            WorkflowRef::Workflow(name) => self.accepts(part, self.get(name)),
+        }
+    }
+
+    fn accepts_count(&self,
+        range: PartRange,
+        workflow: &Workflow,
+        rule_index: usize,
+    ) -> u64 {
+        if rule_index == workflow.rules.len() {
+            return match workflow.default {
+                WorkflowRef::Accept => range.count(),
+                WorkflowRef::Reject => 0,
+                WorkflowRef::Workflow(name) => self.accepts_count(range, self.get(name), 0),
+            };
+        }
+
+        let rule = &workflow.rules[rule_index];
+        let (true_range, false_range) = range.split(rule.rating, rule.predicate);
+        let false_count = self.accepts_count(false_range, workflow, rule_index + 1);
+
+        match rule.next {
+            WorkflowRef::Accept => true_range.count() + false_count,
+            WorkflowRef::Reject => false_count,
+            WorkflowRef::Workflow(name)
+                => self.accepts_count(true_range, self.get(name), 0) + false_count,
         }
     }
 }
@@ -219,4 +320,5 @@ hdj{m>838:A,pv}
 {x=2127,m=1623,a=2188,s=1013}";
     let output = solve(input);
     assert_eq!(output.0, 19114);
+    assert_eq!(output.1, 167409079868000);
 }
