@@ -47,6 +47,7 @@ declare_days!(
     day_17
     day_18
     day_19
+    day_20
 );
 
 use clap::Parser;
