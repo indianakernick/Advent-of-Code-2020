@@ -7,7 +7,6 @@ pub fn solve(input: &str) -> (u32, u32) {
 
     populate_inputs(&mut modules);
 
-    let modules = modules;
     let mut tree = Vec::new();
     let mut existing = HashMap::<&[u8], u16>::new();
 

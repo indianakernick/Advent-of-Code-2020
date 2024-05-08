@@ -34,6 +34,10 @@ impl<'a, Tile> Grid<'a, Tile> {
         y as usize * self.stride + x as usize
     }
 
+    pub fn get_stride(&self) -> usize {
+        self.stride
+    }
+
     pub fn get_width(&self) -> i32 {
         self.width
     }
@@ -60,5 +64,9 @@ impl<'a, Tile> Grid<'a, Tile>
     pub fn get(&self, pos: (i32, i32)) -> Tile {
         debug_assert!(self.valid(pos));
         self.tiles[self.pos_to_index(pos)]
+    }
+
+    pub fn to_vec(&self) -> Vec<Tile> {
+        self.tiles.to_vec()
     }
 }
