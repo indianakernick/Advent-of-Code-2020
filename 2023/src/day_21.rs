@@ -1,12 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::common::{self, Dir, Grid};
 
-pub fn solve(input: &str) -> (u32, usize) {
+pub fn solve(input: &str) -> (u32, u32) {
     let input_grid = Grid::<Tile>::from_input(&input);
 
-    // (count_reachable(input_grid, 64), count_reachable(input_grid, 26501365))
-    (count_reachable2(input_grid, 64), 0)
+    (count_reachable2(input_grid, 64), count_reachable2(input_grid, 26501365))
 }
 
 fn count_reachable2(input_grid: Grid<Tile>, steps: u32) -> u32 {
@@ -33,48 +32,207 @@ fn count_reachable2(input_grid: Grid<Tile>, steps: u32) -> u32 {
     }
 
     let mut read_set = vec![0u64; mask.len()];
-    let mut write_set = vec![0u64; mask.len()];
 
     let start_pos = input_grid.pos_of(Tile::Start).unwrap();
+    let east_edge_mask = 1 << ((input_grid.get_width() + 1) % 64);
 
     read_set[(1 + start_pos.1 as usize) * chunk_width + (1 + start_pos.0 as usize) / 64]
         |= 1 << ((1 + start_pos.0) % 64);
 
-    for _ in 0..steps {
-        for y in 1..chunk_height - 1 {
-            let row_i = y * chunk_width;
-
-            for x in 0..chunk_width {
-                let block_i = row_i + x;
-                let read_block = read_set[block_i];
-
-                write_set[block_i - chunk_width] |= read_block; // north
-                write_set[block_i + chunk_width] |= read_block; // south
-                write_set[block_i] |= (read_block >> 1) | (read_block << 1); // west and east
-
-                if x != 0 {
-                    write_set[block_i - 1] |= read_block << 63; // west carry over
-                }
-
-                if x != chunk_width - 1 {
-                    write_set[block_i + 1] |= read_block >> 63; // east carry over
-                }
-            }
-        }
-
-        for y in 0..chunk_height {
-            let row_i = y * chunk_width;
-            for x in 0..chunk_width {
-                let block_i = row_i + x;
-                write_set[block_i] &= mask[block_i];
-            }
-        }
-
-        std::mem::swap(&mut read_set, &mut write_set);
-        write_set.fill(0);
+    struct Chunk {
+        read: Vec<u64>,
+        write: Vec<u64>,
     }
 
-    read_set.iter().map(|block| block.count_ones()).sum()
+    let mut chunks = HashMap::new();
+    chunks.insert((0, 0), Chunk { read: read_set, write: vec![0u64; mask.len()] });
+
+    struct BlockOperation {
+        chunk_pos: (i32, i32),
+        block_index: usize,
+        block: u64,
+    }
+
+    let mut operations = Vec::new();
+
+    for _ in 0..steps {
+        // Move one step north, south, east and west from the read parts of the
+        // chunks to the write parts of the chunks.
+
+        for chunk in chunks.values_mut() {
+            for y in 1..chunk_height - 1 {
+                let row_i = y * chunk_width;
+
+                for x in 0..chunk_width {
+                    let block_i = row_i + x;
+                    let read_block = chunk.read[block_i];
+
+                    chunk.write[block_i - chunk_width] |= read_block; // north
+                    chunk.write[block_i + chunk_width] |= read_block; // south
+                    chunk.write[block_i] |= (read_block >> 1) | (read_block << 1); // west and east
+
+                    if x != 0 {
+                        chunk.write[block_i - 1] |= read_block << 63; // west carry over
+                    }
+
+                    if x != chunk_width - 1 {
+                        chunk.write[block_i + 1] |= read_block >> 63; // east carry over
+                    }
+                }
+            }
+        }
+
+        // Apply the mask to the write parts of each chunks.
+
+        for chunk in chunks.values_mut() {
+            for y in 0..chunk_height {
+                let row_i = y * chunk_width;
+                for x in 0..chunk_width {
+                    let block_i = row_i + x;
+                    chunk.write[block_i] &= mask[block_i];
+                }
+            }
+        }
+
+        // Check the edges of the chunks to find the new chunks that need to be
+        // created.
+
+        for (pos, chunk) in chunks.iter() {
+            let mut vertical_check = |north: bool, pos: (i32, i32)| {
+                let (from_offset, to_offset) = if north {
+                    (0, (chunk_height - 2) * chunk_width)
+                } else {
+                    ((chunk_height - 1) * chunk_width, 1)
+                };
+
+                for x in 0..chunk_width {
+                    let block = chunk.write[from_offset + x];
+
+                    if block == 0 { continue; }
+
+                    if x == 0 {
+                        // west block
+                        if block & 1 == 1 {
+                            // vertical west corner
+                            operations.push(BlockOperation {
+                                chunk_pos: (pos.0 - 1, pos.1),
+                                block_index: to_offset + chunk_width - 1,
+                                block: east_edge_mask >> 1,
+                            });
+                        }
+                        if block >> 1 != 0 {
+                            // vertical side
+                            operations.push(BlockOperation {
+                                chunk_pos: pos,
+                                block_index: to_offset + x,
+                                block: block & !1,
+                            });
+                        }
+                    }
+
+                    if x == chunk_width - 1 {
+                        // east block
+                        if block & east_edge_mask != 0 {
+                            // vertical east corner
+                            operations.push(BlockOperation {
+                                chunk_pos: (pos.0 + 1, pos.1),
+                                block_index: to_offset,
+                                block: 2,
+                            });
+                        }
+                        if block & !east_edge_mask != 0 {
+                            // vertical side
+                            operations.push(BlockOperation {
+                                chunk_pos: pos,
+                                block_index: to_offset + x,
+                                block: block & !east_edge_mask,
+                            });
+                        }
+                    }
+
+                    if x != 0 && x != chunk_width - 1 {
+                        // vertical side
+                        operations.push(BlockOperation {
+                            chunk_pos: pos,
+                            block_index: to_offset + x,
+                            block,
+                        });
+                    }
+                }
+            };
+
+            // north
+            vertical_check(true, (pos.0, pos.1 - 1));
+            // south
+            vertical_check(false, (pos.0, pos.1 + 1));
+
+            for y in 1..chunk_height - 1 {
+                let west_block_index = y * chunk_width;
+                let east_block_index = y * chunk_width + chunk_width - 1;
+
+                // west
+                if chunk.write[west_block_index] & 1 == 1 {
+                    operations.push(BlockOperation {
+                        chunk_pos: (pos.0 - 1, pos.1),
+                        block_index: east_block_index,
+                        block: east_edge_mask >> 1,
+                    });
+                }
+
+                // east
+                if chunk.write[east_block_index] & east_edge_mask != 0 {
+                    operations.push(BlockOperation {
+                        chunk_pos: (pos.0 + 1, pos.1),
+                        block_index: west_block_index,
+                        block: 2,
+                    });
+                }
+            }
+        }
+
+        // Create the new chunks.
+
+        for op in operations.iter() {
+            let chunk = chunks
+                .entry(op.chunk_pos)
+                .or_insert_with(|| Chunk {
+                    read: vec![0u64; mask.len()],
+                    write: vec![0u64; mask.len()],
+                });
+            chunk.write[op.block_index] |= op.block;
+        }
+
+        operations.clear();
+
+        // Swap the read and write.
+
+        for chunk in chunks.values_mut() {
+            std::mem::swap(&mut chunk.read, &mut chunk.write);
+            chunk.write.fill(0);
+        }
+    }
+
+    // Clear the edges.
+
+    for chunk in chunks.values_mut() {
+        for x in 0..chunk_width {
+            // north
+            chunk.read[x] = 0;
+            // south
+            chunk.read[(chunk_height - 1) * chunk_width + x] = 0;
+        }
+        for y in 1..chunk_height - 1 {
+            // west
+            chunk.read[y * chunk_width] &= !1;
+            // east
+            chunk.read[y * chunk_width + chunk_width - 1] &= !east_edge_mask;
+        }
+    }
+
+    chunks
+        .values()
+        .map(|chunk| chunk.read.iter().map(|block| block.count_ones()).sum::<u32>())
+        .sum()
 }
 
 fn count_reachable(input_grid: Grid::<Tile>, steps: u32) -> usize {
@@ -144,10 +302,10 @@ fn example() {
     assert_eq!(count_reachable2(input_grid, 2), 4);
     assert_eq!(count_reachable2(input_grid, 3), 6);
     assert_eq!(count_reachable2(input_grid, 6), 16);
-    // assert_eq!(count_reachable(input_grid, 10), 50);
-    // assert_eq!(count_reachable(input_grid, 50), 1594);
-    // assert_eq!(count_reachable(input_grid, 100), 6536);
-    // assert_eq!(count_reachable(input_grid, 500), 167004);
-    // assert_eq!(count_reachable(input_grid, 1000), 668697);
-    // assert_eq!(count_reachable(input_grid, 5000), 16733044);
+    assert_eq!(count_reachable2(input_grid, 10), 50);
+    assert_eq!(count_reachable2(input_grid, 50), 1594);
+    assert_eq!(count_reachable2(input_grid, 100), 6536);
+    assert_eq!(count_reachable2(input_grid, 500), 167004);
+    assert_eq!(count_reachable2(input_grid, 1000), 668697);
+    assert_eq!(count_reachable2(input_grid, 5000), 16733044);
 }
